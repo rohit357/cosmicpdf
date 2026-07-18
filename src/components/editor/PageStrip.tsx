@@ -53,45 +53,50 @@ export default function PageStrip() {
         <div className="flex items-center gap-3 px-3 h-full py-2">
           {pages.map((page, index) => (
             <Tooltip key={page.pageIndex}>
-              <TooltipTrigger
-                  onClick={() => setCurrentPage(index)}
-                  className={`
-                    relative shrink-0 h-[76px] rounded-lg overflow-hidden transition-all duration-200 group
-                    ${currentPageIndex === index
-                      ? 'ring-2 ring-[#DC2626] ring-offset-2 shadow-md'
-                      : 'border border-[#E2E8F0] hover:border-[#94A3B8] hover:shadow-sm'
-                    }
-                  `}
-                >
-                  <img
-                    src={page.thumbnailDataUrl}
-                    alt={`Page ${index + 1}`}
-                    className="h-full w-auto object-contain bg-white"
-                    draggable={false}
-                  />
-                  {/* Page number badge */}
-                  <div className={`
-                    absolute bottom-0 inset-x-0 text-[10px] font-medium text-center py-0.5
-                    ${currentPageIndex === index
-                      ? 'bg-[#DC2626] text-white'
-                      : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity'
-                    }
-                  `}>
-                    {index + 1}
-                  </div>
-                  {/* Delete button on hover */}
-                  {pages.length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeletePage(index);
-                      }}
-                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-[#DC2626] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#B91C1C]"
-                    >
-                      <Trash2 className="w-2.5 h-2.5 text-white" />
-                    </button>
-                  )}
-              </TooltipTrigger>
+              {/* Wrapper owns `group`/`relative` so the delete button can be a
+                  sibling of the trigger instead of nested inside it (nested
+                  <button> is invalid HTML and breaks hydration). */}
+              <div className="relative shrink-0 h-[76px] group">
+                <TooltipTrigger
+                    onClick={() => setCurrentPage(index)}
+                    className={`
+                      block h-full rounded-lg overflow-hidden transition-all duration-200
+                      ${currentPageIndex === index
+                        ? 'ring-2 ring-[#DC2626] ring-offset-2 shadow-md'
+                        : 'border border-[#E2E8F0] hover:border-[#94A3B8] hover:shadow-sm'
+                      }
+                    `}
+                  >
+                    <img
+                      src={page.thumbnailDataUrl}
+                      alt={`Page ${index + 1}`}
+                      className="h-full w-auto object-contain bg-white"
+                      draggable={false}
+                    />
+                    {/* Page number badge */}
+                    <div className={`
+                      absolute bottom-0 inset-x-0 text-[10px] font-medium text-center py-0.5
+                      ${currentPageIndex === index
+                        ? 'bg-[#DC2626] text-white'
+                        : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity'
+                      }
+                    `}>
+                      {index + 1}
+                    </div>
+                </TooltipTrigger>
+                {/* Delete button on hover */}
+                {pages.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePage(index);
+                    }}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-[#DC2626] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#B91C1C] z-10"
+                  >
+                    <Trash2 className="w-2.5 h-2.5 text-white" />
+                  </button>
+                )}
+              </div>
               <TooltipContent>Page {index + 1}</TooltipContent>
             </Tooltip>
           ))}

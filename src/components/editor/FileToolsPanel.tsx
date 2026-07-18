@@ -464,7 +464,10 @@ export default function FileToolsPanel() {
               try {
                 const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
                 GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-                const loadingTask = getDocument({ data: pdfBytes });
+                // Pass a copy: pdf.js may transfer the buffer to its worker and
+                // detach it, which would corrupt the shared store bytes used by
+                // later operations (compress/inflate/export).
+                const loadingTask = getDocument({ data: pdfBytes.slice() });
                 const pdf = await loadingTask.promise;
                 for (let i = 1; i <= pdf.numPages; i++) {
                   const page = await pdf.getPage(i);

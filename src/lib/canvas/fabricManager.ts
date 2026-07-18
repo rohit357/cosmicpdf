@@ -17,6 +17,18 @@ export async function getFabric(): Promise<typeof import('fabric')> {
 }
 
 /**
+ * Whether a fabric canvas has already been disposed. Async work (image loads,
+ * dynamic imports) can resolve after the canvas was torn down during a page
+ * switch or unmount; mutating a disposed canvas throws
+ * "Cannot destructure property 'el' of 'this.lower' as it is undefined".
+ * Guard post-await canvas access with this check.
+ */
+export function isCanvasDisposed(canvas: FabricCanvas | null): boolean {
+  if (!canvas) return true;
+  return (canvas as unknown as { disposed?: boolean }).disposed === true;
+}
+
+/**
  * Initialize a fabric.js canvas on a given HTML canvas element
  */
 export async function initCanvas(

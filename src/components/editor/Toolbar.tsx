@@ -8,9 +8,11 @@ import { useToastStore } from '@/components/ui/ToastProvider';
 import { Button } from '@/components/ui/button';
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Download, Upload,
-  FileText, Maximize2, Trash2, Keyboard, Menu, PanelRightOpen
+  FileText, Maximize2, Trash2, Keyboard, Menu, PanelRightOpen,
+  ScrollText, Pencil, ArrowLeft
 } from 'lucide-react';
 import { useRef, useCallback, useState, useEffect } from 'react';
+import Link from 'next/link';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
@@ -29,6 +31,8 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
   const canRedo = useHistoryStore((s) => s.redoStack.length > 0);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const togglePropertiesPanel = useUIStore((s) => s.togglePropertiesPanel);
+  const viewMode = useUIStore((s) => s.viewMode);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const addToast = useToastStore((s) => s.addToast);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -98,8 +102,16 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
 
   return (
     <header className="h-12 md:h-14 bg-white border-b border-[#E2E8F0] flex items-center justify-between px-2 md:px-4 shrink-0 gap-1">
-      {/* Left: Hamburger (mobile) + File info */}
+      {/* Left: Back + Hamburger (mobile) + File info */}
       <div className="flex items-center gap-1.5 md:gap-3 min-w-0">
+        <Link
+          href="/"
+          className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors shrink-0"
+          title="Back to home"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+
         <Button
           variant="ghost"
           size="icon"
@@ -141,6 +153,21 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
         </Button>
         <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 hidden sm:flex" onClick={() => setZoom(1)} title="Fit to Page">
           <Maximize2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        </Button>
+
+        <div className="w-px h-4 md:h-5 bg-[#E2E8F0] mx-1 md:mx-2" />
+
+        {/* View mode: single-page edit vs continuous scroll preview */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 md:h-8 md:w-8"
+          onClick={() => setViewMode(viewMode === 'edit' ? 'scroll' : 'edit')}
+          title={viewMode === 'edit' ? 'Scroll view (all pages)' : 'Back to edit'}
+        >
+          {viewMode === 'edit'
+            ? <ScrollText className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            : <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />}
         </Button>
       </div>
 

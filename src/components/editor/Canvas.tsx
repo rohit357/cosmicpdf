@@ -114,6 +114,15 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
       }
 
       const canvas = await initCanvas(canvasElRef.current, width, height);
+      // Effect was cleaned up while the canvas was being created — tear it down.
+      if (!mounted) {
+        try {
+          canvas.dispose();
+        } catch {
+          // ignore disposal errors
+        }
+        return;
+      }
       canvasRef.current = canvas;
       // Register for toolbar actions (clear annotations, etc.)
       setActiveCanvas(canvas);
@@ -124,17 +133,20 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
       } catch (err) {
         console.error('Background set failed:', err);
       }
+      if (!mounted || canvas !== canvasRef.current) return;
 
       // Load saved state if exists
       const savedState = canvasStates[currentPageIndex];
       if (savedState) {
         await loadCanvasJSON(canvas, savedState);
+        if (!mounted || canvas !== canvasRef.current) return;
         // Re-apply background since loadFromJSON may overwrite it
         try {
           await setCanvasBackground(canvas, currentPage.imageDataUrl, width, height);
         } catch (err) {
           console.error('Background reset failed:', err);
         }
+        if (!mounted || canvas !== canvasRef.current) return;
       }
 
       // Event listeners
@@ -160,6 +172,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
       });
 
       initializedForPage.current = currentPageIndex;
+      if (!mounted || canvas !== canvasRef.current) return;
       setIsReady(true);
     };
 
@@ -179,9 +192,12 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
 
     const switchPage = async () => {
       const canvas = canvasRef.current!;
-      const { setCanvasBackground, loadCanvasJSON, clearCanvasObjects } = await import(
+      const { setCanvasBackground, loadCanvasJSON, clearCanvasObjects, isCanvasDisposed } = await import(
         '@/lib/canvas/fabricManager'
       );
+
+      // The canvas may have been disposed/recreated during the dynamic import.
+      if (isCanvasDisposed(canvas) || canvas !== canvasRef.current) return;
 
       clearCanvasObjects(canvas);
       canvas.setDimensions({
@@ -189,17 +205,20 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         height: currentPage.height,
       });
       await setCanvasBackground(canvas, currentPage.imageDataUrl, currentPage.width, currentPage.height);
+      if (isCanvasDisposed(canvas) || canvas !== canvasRef.current) return;
 
       // Load saved canvas state
       const savedState = canvasStates[currentPageIndex];
       if (savedState) {
         await loadCanvasJSON(canvas, savedState);
+        if (isCanvasDisposed(canvas) || canvas !== canvasRef.current) return;
         await setCanvasBackground(
           canvas,
           currentPage.imageDataUrl,
           currentPage.width,
           currentPage.height
         );
+        if (isCanvasDisposed(canvas) || canvas !== canvasRef.current) return;
       }
 
       initializedForPage.current = currentPageIndex;

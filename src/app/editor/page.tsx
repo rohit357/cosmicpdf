@@ -8,7 +8,7 @@ import { useHistoryStore } from '@/store/historyStore';
 import { useUIStore } from '@/store/uiStore';
 import { useToastStore } from '@/components/ui/ToastProvider';
 import { ToastContainer } from '@/components/ui/toast-container';
-import { loadAndRenderPDF, DEFAULT_RENDER_SCALE } from '@/lib/pdf/renderer';
+import { renderPDFProgressive, DEFAULT_RENDER_SCALE } from '@/lib/pdf/renderer';
 import { exportAnnotatedPDF, downloadPDF } from '@/lib/pdf/engine';
 import dynamic from 'next/dynamic';
 import type { Canvas as FabricCanvas } from 'fabric';
@@ -21,15 +21,18 @@ const PageStrip = dynamic(() => import('@/components/editor/PageStrip'), { ssr: 
 const PropertiesPanel = dynamic(() => import('@/components/editor/PropertiesPanel'), { ssr: false });
 const SignaturePad = dynamic(() => import('@/components/tools/SignaturePad'), { ssr: false });
 const ImageStamp = dynamic(() => import('@/components/tools/ImageStamp'), { ssr: false });
+const ScrollView = dynamic(() => import('@/components/editor/ScrollView'), { ssr: false });
 
 export default function EditorPage() {
   const router = useRouter();
   const canvasRef = useRef<FabricCanvas | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  // Background render progress: { done, total } while pages stream in, else null
+  const [renderProgress, setRenderProgress] = useState<{ done: number; total: number } | null>(null);
 
   const pdfBytes = usePdfStore((s) => s.pdfBytes);
   const fileName = usePdfStore((s) => s.fileName);
-  const setPages = usePdfStore((s) => s.setPages);
+  const addPage = usePdfStore((s) => s.addPage);
   const pages = usePdfStore((s) => s.pages);
   const canvasStates = usePdfStore((s) => s.canvasStates);
 
@@ -41,6 +44,7 @@ export default function EditorPage() {
 
   const propertiesPanelOpen = useUIStore((s) => s.propertiesPanelOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const viewMode = useUIStore((s) => s.viewMode);
 
   const addToast = useToastStore((s) => s.addToast);
 
@@ -63,39 +67,51 @@ export default function EditorPage() {
     }
   }, [pdfBytes, router]);
 
-  // Render PDF pages on load
+  // Render PDF pages on load.
+  // Pages stream in one at a time so the editor becomes usable as soon as the
+  // first page is ready; the rest render in the background. A ref guards against
+  // re-entry, since appending pages changes `pages.length` (an effect dependency).
+  const renderStartedRef = useRef(false);
   useEffect(() => {
-    if (!pdfBytes || pages.length > 0) return;
+    if (!pdfBytes || pages.length > 0 || renderStartedRef.current) return;
+    renderStartedRef.current = true;
 
     const renderPDF = async () => {
       try {
         // Create a fresh copy to avoid detached/shared buffer issues
         const freshBuffer = pdfBytes.slice().buffer as ArrayBuffer;
-        const renderedPages = await loadAndRenderPDF(freshBuffer);
-        setPages(renderedPages);
 
-        // Auto-fit zoom: calculate zoom to fit page width in available space
-        if (renderedPages.length > 0) {
-          const firstPage = renderedPages[0];
-          // Available width = viewport - sidebar(220) - properties(250) - padding(64) - scrollbar(16)
-          const sidebarW = window.innerWidth >= 768 ? 220 : 0;
-          const propsW = window.innerWidth >= 768 ? 250 : 0;
-          const padding = 64;
-          const available = window.innerWidth - sidebarW - propsW - padding;
-          const fitZoom = Math.min(available / firstPage.width, 1); // never exceed 100%
-          const clampedZoom = Math.max(0.3, Math.min(1, fitZoom));
-          useEditorStore.getState().setZoom(clampedZoom);
-        }
+        await renderPDFProgressive(freshBuffer, {
+          onPage: (page, total) => {
+            addPage(page);
+            setRenderProgress({ done: page.pageIndex + 1, total });
 
-        addToast({ type: 'success', message: `Loaded ${renderedPages.length} pages` });
+            // Auto-fit zoom once, based on the first page width.
+            if (page.pageIndex === 0) {
+              // Available width = viewport - sidebar(220) - properties(250) - padding(64) - scrollbar(16)
+              const sidebarW = window.innerWidth >= 768 ? 220 : 0;
+              const propsW = window.innerWidth >= 768 ? 250 : 0;
+              const padding = 64;
+              const available = window.innerWidth - sidebarW - propsW - padding;
+              const fitZoom = Math.min(available / page.width, 1); // never exceed 100%
+              const clampedZoom = Math.max(0.3, Math.min(1, fitZoom));
+              useEditorStore.getState().setZoom(clampedZoom);
+            }
+          },
+        });
+
+        addToast({ type: 'success', message: `Loaded ${usePdfStore.getState().pages.length} pages` });
       } catch (error) {
         console.error('Failed to render PDF:', error);
         addToast({ type: 'error', message: 'Failed to render PDF. File may be corrupted.' });
+        renderStartedRef.current = false; // allow retry on transient failure
+      } finally {
+        setRenderProgress(null);
       }
     };
 
     renderPDF();
-  }, [pdfBytes, pages.length, setPages, addToast]);
+  }, [pdfBytes, pages.length, addPage, addToast]);
 
   // Handle undo
   const handleUndo = useCallback(async () => {
@@ -276,19 +292,34 @@ export default function EditorPage() {
       {/* Toolbar */}
       <Toolbar onExport={handleExport} onUndo={handleUndo} onRedo={handleRedo} />
 
+      {/* Background page-render progress (non-blocking; editor is already usable) */}
+      {renderProgress && renderProgress.done < renderProgress.total && (
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-3 rounded-lg bg-[#0F172A] px-4 py-2.5 text-white shadow-xl">
+          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span className="text-sm font-medium">
+            Rendering pages… {renderProgress.done}/{renderProgress.total}
+          </span>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
         <Sidebar />
 
-        {/* Center Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <CanvasEditor canvasRef={canvasRef} />
-          <PageStrip />
+        {/* Center: edit canvas (kept mounted to preserve fabric state) and,
+            in scroll mode, a read-only continuous page preview on top. */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
+          <div className={`flex-1 flex flex-col overflow-hidden min-w-0 ${viewMode === 'scroll' ? 'hidden' : ''}`}>
+            <CanvasEditor canvasRef={canvasRef} />
+            <PageStrip />
+          </div>
+          {viewMode === 'scroll' && <ScrollView />}
         </div>
 
-        {/* Right Panel — hidden on mobile unless propertiesPanelOpen */}
-        {showRightPanel && (
+        {/* Right Panel — hidden on mobile unless propertiesPanelOpen.
+            Not shown in scroll mode (read-only preview has no properties). */}
+        {showRightPanel && viewMode === 'edit' && (
           <>
             {showSignaturePanel ? (
               <div className="

@@ -2,6 +2,22 @@
 
 All notable changes to CosmicPDF are documented here.
 
+## Phase 2 — Performance: rendering & memory (2026-07-18)
+
+### Improved
+
+- **Progressive page rendering**: the editor now shows the first page as soon as it is rasterized and renders the remaining pages in the background, instead of blocking on the whole document. A non-blocking progress indicator shows `done/total`.
+- **Blob URLs instead of base64 data URLs**: rendered page and thumbnail images are stored as `blob:` object URLs (`canvas.toBlob` + `URL.createObjectURL`) rather than base64 `data:` strings, cutting the in-memory image footprint (~33% smaller, binary vs base64).
+- **Explicit pdf.js document lifecycle**: `renderPDFProgressive` opens the document once per render pass and destroys it when finished, releasing worker resources.
+
+### Fixed
+
+- Potential memory leak: page/thumbnail blob URLs are now revoked when the document is replaced (`setPages`) or reset, so repeated document loads no longer accumulate orphaned object URLs.
+
+### Notes
+
+- Behavior- and UI-preserving: same visual output and page fidelity (scale-2 PNG raster retained). `loadAndRenderPDF` kept as a thin wrapper over the new progressive renderer for existing callers. Build passes; lint clean (0 errors / 0 warnings).
+
 ## Phase 1 — Code hygiene & stability (2026-07-18)
 
 ### Fixed
