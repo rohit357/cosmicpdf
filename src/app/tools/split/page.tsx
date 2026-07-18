@@ -48,7 +48,7 @@ export default function SplitToolPage() {
         downloadPDF(result, `${fileName.replace('.pdf', '')}-page${singlePage}.pdf`);
       } else if (splitMode === 'range') {
         const results = await splitPDF(pdfBytes, [[rangeStart - 1, rangeEnd - 1]]);
-        results.forEach((r, i) => {
+        results.forEach((r) => {
           downloadPDF(r, `${fileName.replace('.pdf', '')}-pages${rangeStart}-${rangeEnd}.pdf`);
         });
       } else if (splitMode === 'every') {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { usePdfStore } from '@/store/pdfStore';
 import { useHistoryStore } from '@/store/historyStore';
+import { setActiveCanvas } from '@/lib/canvas/canvasRegistry';
 import type { Canvas as FabricCanvas } from 'fabric';
 
 interface CanvasEditorProps {
@@ -50,6 +51,11 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   useEffect(() => {
     hasPlacedRef.current = false;
   }, [activeTool]);
+
+  // Unregister the canvas when the editor unmounts
+  useEffect(() => {
+    return () => setActiveCanvas(null);
+  }, []);
 
   // Helper: get canvas-local coordinates from a mouse event
   const getCanvasCoords = useCallback(
@@ -109,8 +115,8 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
 
       const canvas = await initCanvas(canvasElRef.current, width, height);
       canvasRef.current = canvas;
-      // Expose globally for toolbar actions (clear annotations, etc.)
-      (window as unknown as Record<string, unknown>).__cosmicPdfCanvas = canvas;
+      // Register for toolbar actions (clear annotations, etc.)
+      setActiveCanvas(canvas);
 
       // Set background with PDF page image
       try {

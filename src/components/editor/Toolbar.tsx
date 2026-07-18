@@ -80,7 +80,8 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
   }, [onExport]);
 
   const handleClearAnnotations = async () => {
-    const canvas = (window as unknown as Record<string, unknown>).__cosmicPdfCanvas as import('fabric').Canvas | undefined;
+    const { getActiveCanvas } = await import('@/lib/canvas/canvasRegistry');
+    const canvas = getActiveCanvas();
     if (canvas) {
       const { clearCanvasObjects, setCanvasBackground } = await import('@/lib/canvas/fabricManager');
       clearCanvasObjects(canvas);

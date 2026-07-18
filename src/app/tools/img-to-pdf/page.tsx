@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- previews are local data URLs; next/image not applicable */
 
 import { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ToastContainer } from '@/components/ui/toast-container';
 import { useToastStore } from '@/components/ui/ToastProvider';
 import { imagesToPDF, downloadPDF } from '@/lib/pdf/engine';
-import { ArrowLeft, FileImage, Upload, Download, Loader2, Trash2, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { ArrowLeft, FileImage, Upload, Download, Loader2, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 
 interface ImageFile {

@@ -18,7 +18,7 @@ import type { WatermarkOptions, CompressOptions } from '@/types';
  * Merge multiple PDFs into one (all pages)
  */
 export async function mergePDFs(pdfBytesArray: Uint8Array[]): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const mergedDoc = await PDFDocument.create();
 
   for (const pdfBytes of pdfBytesArray) {
@@ -37,7 +37,7 @@ export async function mergePDFs(pdfBytesArray: Uint8Array[]): Promise<Uint8Array
 export async function mergeSpecificPages(
   files: { bytes: Uint8Array; selectedPages: number[] }[]
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const mergedDoc = await PDFDocument.create();
 
   for (const file of files) {
@@ -57,7 +57,7 @@ export async function splitPDF(
   pdfBytes: Uint8Array,
   ranges: [number, number][]
 ): Promise<Uint8Array[]> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const results: Uint8Array[] = [];
 
   for (const [start, end] of ranges) {
@@ -76,7 +76,7 @@ export async function splitPDF(
  * Extract a single page as a new PDF
  */
 export async function extractPage(pdfBytes: Uint8Array, pageIndex: number): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const srcDoc = await PDFDocument.load(pdfBytes);
   const newDoc = await PDFDocument.create();
   const [copiedPage] = await newDoc.copyPages(srcDoc, [pageIndex]);
@@ -92,7 +92,7 @@ export async function rotatePages(
   pdfBytes: Uint8Array,
   rotations: Record<number, number>
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument, degrees } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const pages = doc.getPages();
 
@@ -111,7 +111,7 @@ export async function rotatePages(
  * Rotate all pages
  */
 export async function rotateAllPages(pdfBytes: Uint8Array, rotation: number): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument, degrees } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
   const pages = doc.getPages();
   pages.forEach((page) => {
@@ -129,7 +129,7 @@ export async function reorderPages(
   pdfBytes: Uint8Array,
   newOrder: number[]
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const srcDoc = await PDFDocument.load(pdfBytes);
   const newDoc = await PDFDocument.create();
   const copiedPages = await newDoc.copyPages(srcDoc, newOrder);
@@ -145,7 +145,7 @@ export async function deletePages(
   pdfBytes: Uint8Array,
   pageIndices: number[]
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const srcDoc = await PDFDocument.load(pdfBytes);
   const allIndices = srcDoc.getPageIndices();
   const keepIndices = allIndices.filter((i) => !pageIndices.includes(i));
@@ -232,7 +232,7 @@ export async function inflatePDF(
   pdfBytes: Uint8Array,
   targetSizeBytes: number
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.load(pdfBytes);
 
   let currentBytes = await doc.save();
@@ -298,7 +298,7 @@ export async function compressPDF(
   pdfBytes: Uint8Array,
   options: CompressOptions
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const quality = options.quality;
 
   // Use pdfjs to render each page, then re-encode as JPEG
@@ -350,7 +350,7 @@ export async function compressPDF(
 export async function imagesToPDF(
   images: { dataUrl: string; width: number; height: number }[]
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.create();
 
   for (const img of images) {
@@ -380,22 +380,27 @@ export async function imagesToPDF(
 /**
  * Export annotated PDF from canvas images
  * Each pageImage is a full-page PNG (PDF background + fabric annotations merged)
+ *
+ * @param pageDimensions Optional per-page size in PDF points. When provided,
+ * each page is created at its true PDF dimensions and the (higher resolution)
+ * canvas image is scaled to fit. Without it, page size falls back to the raw
+ * image pixel size, which produces oversized page dimensions for canvases
+ * rendered above 1:1 scale.
  */
 export async function exportAnnotatedPDF(
   pageImages: string[],
-  originalWidth?: number,
-  originalHeight?: number
+  pageDimensions?: { width: number; height: number }[]
 ): Promise<Uint8Array> {
-  const { PDFDocument, rgb, StandardFonts, degrees } = await getPdfLib();
+  const { PDFDocument } = await getPdfLib();
   const doc = await PDFDocument.create();
 
-  for (const dataUrl of pageImages) {
-    const base64Data = dataUrl.split(',')[1];
+  for (let i = 0; i < pageImages.length; i++) {
+    const base64Data = pageImages[i].split(',')[1];
     const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
     const image = await doc.embedPng(imageBytes);
 
-    const width = originalWidth ?? image.width;
-    const height = originalHeight ?? image.height;
+    const width = pageDimensions?.[i]?.width ?? image.width;
+    const height = pageDimensions?.[i]?.height ?? image.height;
     const page = doc.addPage([width, height]);
     page.drawImage(image, {
       x: 0,

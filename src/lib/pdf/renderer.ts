@@ -5,6 +5,12 @@
 
 import type { PDFPageData } from '@/types';
 
+/**
+ * Scale used when rasterizing PDF pages for the editor canvas.
+ * Rendered pixel dimensions = PDF point dimensions * this scale.
+ */
+export const DEFAULT_RENDER_SCALE = 2;
+
 let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 let initPromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
@@ -43,7 +49,7 @@ export async function loadAndRenderPDF(
   options?: { scale?: number; thumbnailScale?: number }
 ): Promise<PDFPageData[]> {
   const pdfjs = await getPdfjs();
-  const scale = options?.scale ?? 2;
+  const scale = options?.scale ?? DEFAULT_RENDER_SCALE;
   const thumbScale = options?.thumbnailScale ?? 0.3;
 
   // Create a fresh copy to avoid detached/shared buffer issues

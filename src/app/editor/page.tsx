@@ -8,7 +8,7 @@ import { useHistoryStore } from '@/store/historyStore';
 import { useUIStore } from '@/store/uiStore';
 import { useToastStore } from '@/components/ui/ToastProvider';
 import { ToastContainer } from '@/components/ui/toast-container';
-import { loadAndRenderPDF } from '@/lib/pdf/renderer';
+import { loadAndRenderPDF, DEFAULT_RENDER_SCALE } from '@/lib/pdf/renderer';
 import { exportAnnotatedPDF, downloadPDF } from '@/lib/pdf/engine';
 import dynamic from 'next/dynamic';
 import type { Canvas as FabricCanvas } from 'fabric';
@@ -167,8 +167,14 @@ export default function EditorPage() {
         await setCanvasBackground(canvas, page.imageDataUrl, page.width, page.height);
       }
 
-      // Create and download PDF
-      const pdfOutput = await exportAnnotatedPDF(pageImages);
+      // Create and download PDF.
+      // Stored page sizes are canvas pixels (points * DEFAULT_RENDER_SCALE);
+      // convert back to PDF points so exported pages match the original size.
+      const pageDimensions = pages.map((p) => ({
+        width: p.width / DEFAULT_RENDER_SCALE,
+        height: p.height / DEFAULT_RENDER_SCALE,
+      }));
+      const pdfOutput = await exportAnnotatedPDF(pageImages, pageDimensions);
       const exportName = fileName?.replace('.pdf', '-edited.pdf') || 'cosmic-pdf-export.pdf';
       downloadPDF(pdfOutput, exportName);
 

@@ -1,10 +1,11 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- previews are local data URLs; next/image not applicable */
 
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
-import { Upload, Sparkles, ImagePlus, Loader2 } from 'lucide-react';
+import { Sparkles, ImagePlus, Loader2 } from 'lucide-react';
 import { useToastStore } from '@/components/ui/ToastProvider';
 
 interface ImageStampProps {

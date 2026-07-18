@@ -1,11 +1,12 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- previews are local data URLs; next/image not applicable */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
-import { PenTool, Type, Upload, Trash2, Download, Loader2, ImagePlus } from 'lucide-react';
+import { PenTool, Type, Upload, Trash2, Download, Loader2 } from 'lucide-react';
 
 const cursiveFonts = [
   { name: 'Dancing Script', family: "'Dancing Script', cursive" },

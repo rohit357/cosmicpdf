@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { usePdfStore } from '@/store/pdfStore';
 import { useToastStore } from '@/components/ui/ToastProvider';
@@ -47,6 +47,15 @@ export default function FileToolsPanel() {
 
   // Delete pages state
   const [selectedForDelete, setSelectedForDelete] = useState<Set<number>>(new Set());
+
+  // Keep page-dependent state in sync when the document (page count) changes.
+  // These are initialized on mount, which may happen before the PDF finishes
+  // loading (pageCount = 0) or persist across a document swap.
+  useEffect(() => {
+    setSplitEnd(pageCount || 1);
+    setPageOrder(Array.from({ length: pageCount || 0 }, (_, i) => i));
+    setSelectedForDelete(new Set());
+  }, [pageCount]);
 
   // Reusable execution wrapper
   const executeOperation = async (operation: () => Promise<Uint8Array | Uint8Array[]>, successMsg: string, defaultName: string) => {
