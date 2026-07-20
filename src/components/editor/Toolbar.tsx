@@ -8,7 +8,7 @@ import { useToastStore } from '@/components/ui/ToastProvider';
 import { Button } from '@/components/ui/button';
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Download, Upload,
-  FileText, Maximize2, Trash2, Keyboard, Menu, PanelRightOpen,
+  FileText, Maximize2, Trash2, Keyboard, PanelRightOpen,
   ScrollText, Pencil, ArrowLeft
 } from 'lucide-react';
 import { useRef, useCallback, useState, useEffect } from 'react';
@@ -29,7 +29,6 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
   const setFile = usePdfStore((s) => s.setFile);
   const canUndo = useHistoryStore((s) => s.undoStack.length > 0);
   const canRedo = useHistoryStore((s) => s.redoStack.length > 0);
-  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const togglePropertiesPanel = useUIStore((s) => s.togglePropertiesPanel);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
@@ -113,16 +112,9 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
           <ArrowLeft className="w-4 h-4" />
         </Link>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 md:hidden shrink-0"
-          onClick={toggleSidebar}
-          title="Toggle Sidebar"
-          aria-label="Toggle sidebar"
-        >
-          <Menu className="w-4 h-4" />
-        </Button>
+        {/* Hamburger removed on phones: the bottom toolbar + sheets (M1) replace
+            the sidebar drawer as the mobile tool surface. Desktop sidebar is
+            always visible and needs no toggle. */}
 
         <FileText className="w-4 h-4 text-[#64748B] shrink-0 hidden sm:block" />
         <span className="text-xs md:text-sm font-medium text-[#0F172A] truncate max-w-[100px] md:max-w-[200px]">
@@ -130,19 +122,20 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
         </span>
       </div>
 
-      {/* Center: Undo/Redo + Zoom */}
+      {/* Center: Undo/Redo + Zoom (desktop; on phones undo/redo live in the
+          bottom toolbar and zoom is pinch/double-tap + kebab presets) */}
       <div className="flex items-center gap-0.5 md:gap-1">
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
-          <Undo2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
+          <Undo2 className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
-          <Redo2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
+          <Redo2 className="w-4 h-4" />
         </Button>
 
-        <div className="w-px h-4 md:h-5 bg-[#E2E8F0] mx-1 md:mx-2" />
+        <div className="hidden md:block w-px h-5 bg-[#E2E8F0] mx-2" />
 
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setZoom(zoom - 0.1)} title="Zoom Out" aria-label="Zoom out">
-          <ZoomOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8" onClick={() => setZoom(zoom - 0.1)} title="Zoom Out" aria-label="Zoom out">
+          <ZoomOut className="w-4 h-4" />
         </Button>
         <button
           className="text-[10px] md:text-xs font-medium text-[#64748B] min-w-[32px] md:min-w-[40px] text-center hover:text-[#0F172A] cursor-pointer transition-colors"
@@ -150,14 +143,14 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
         >
           {Math.round(zoom * 100)}%
         </button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setZoom(zoom + 0.1)} title="Zoom In" aria-label="Zoom in">
-          <ZoomIn className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8" onClick={() => setZoom(zoom + 0.1)} title="Zoom In" aria-label="Zoom in">
+          <ZoomIn className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 hidden sm:flex" onClick={() => setZoom(1)} title="Fit to Page" aria-label="Fit to page">
-          <Maximize2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-8 w-8" onClick={() => setZoom(1)} title="Fit to Page" aria-label="Fit to page">
+          <Maximize2 className="w-4 h-4" />
         </Button>
 
-        <div className="w-px h-4 md:h-5 bg-[#E2E8F0] mx-1 md:mx-2" />
+        <div className="hidden md:block w-px h-5 bg-[#E2E8F0] mx-2" />
 
         {/* View mode: single-page edit vs continuous scroll preview */}
         <Button

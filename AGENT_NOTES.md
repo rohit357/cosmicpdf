@@ -19,9 +19,21 @@ Data flow: upload → bytes in pdfStore → pdfjs renders all pages to PNG data 
 
 # Current Phase
 
-Mobile UX roadmap (approved plan: M0–M4). **Phase M0 (quick wins) COMPLETE**, awaiting user review/commit. Phase 3 (touch) also uncommitted in same tree.
+Mobile UX roadmap (approved plan: M0–M4). **Phase M1 (mobile chrome) COMPLETE**, awaiting user review/commit. M0 committed (`2f22cc6`).
 
 # Completed
+
+Phase M1 (mobile chrome) — bottom navigation + sheets, phone-only:
+1. M1.1 `uiStore`: `activeSheet: 'draw' | 'shapes' | 'more' | null` + `setActiveSheet`. Single field → at most one sheet open; desktop ignores it.
+2. M1.2 `BottomToolbar.tsx` (new, `md:hidden`): slots undo/redo | Select | Text | Draw | Shapes | More. Draw/Shapes/More open bottom sheets (existing `ui/sheet.tsx`, `side="bottom"`, controlled via `activeSheet`). Tool tap → `setActiveTool` + sheet close. Sheet grids 72px touch cells; safe-area padding on bar + sheets; hidden in scroll mode (read-only). Tool lists duplicated from Sidebar as presentation-only data (no behavior duplication — same `setActiveTool` path).
+3. M1.3 Top toolbar slimmed on phones: undo/redo + zoom buttons + fit `hidden md:inline-flex` (kebab keeps zoom presets; pinch/double-tap cover zoom); zoom % indicator stays visible (tap = reset). Hamburger removed — bottom bar replaces sidebar as mobile tool surface (drawer unreachable by design; Sidebar component untouched for desktop). `editor/page.tsx` renders `<BottomToolbar onUndo onRedo/>` after canvas area. PageStrip safe-area padding now `md:`-only (BottomToolbar is bottom-most element on phones).
+
+Design decisions (M1):
+- Slots chosen: Select + Text top-level (most-used single tools), Draw/Shapes grouped in sheets, everything else in More — 90% actions ≤2 taps, all ≥44px.
+- Sheets reuse base-ui Dialog-based `ui/sheet.tsx` — focus trap + backdrop free; no new dependency.
+- BottomToolbar inside canvas-column flex (not fixed) → keeps canvas height math simple, no overlap with PageStrip.
+- Chrome is presentation-only: zero store changes beyond `activeSheet`; fabric/canvas pipeline untouched → Phase 2/3 perf + M0 behavior hold.
+- Sidebar mobile-drawer code left in place (dead on phones) — removing = desktop-risk churn for no gain; M2+ may delete.
 
 Phase M0 (mobile UX quick wins) — per approved plan:
 1. M0.1 Safe areas: `export const viewport: Viewport` with `viewportFit: 'cover'` in `layout.tsx`; `pb-[env(safe-area-inset-bottom)]` on PageStrip container.
@@ -88,7 +100,6 @@ Phase 1 (all tasks):
 # Remaining
 
 - Mobile UX plan (approved; see `C:\Users\Admin\.claude\plans\anlayse-the-codebase-important-bubbly-treasure.md`):
-  - M1 — mobile chrome: `activeSheet` single-panel state, BottomToolbar `<md`, tool sheets, undo/redo relocation, slimmed top bar
   - M2 — selection context bar (fixes critical P1: no touch path to delete object) + properties bottom sheet
   - M3 — pinch focal anchoring, two-finger pan in select mode, keyboard/visualViewport text-editing handling, landscape slim chrome
   - M4 — page-grid virtualization (if needed), haptics, z-order buttons
@@ -129,7 +140,8 @@ Phase 1 (all tasks):
 - Post-scroll-view: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-Phase-3: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-M0: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
+- Post-M1: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 
 # Next Session
 
-M0 done, not yet committed (tree also holds Phase 3 + allowedDevOrigins). If resuming: check `git status` — uncommitted `src/` changes mean user hasn't committed; do NOT start M1 without explicit approval. Next work = **M1 (mobile chrome)** per approved plan: `activeSheet` uiStore field, BottomToolbar `<md`, tool sheets from existing `ui/sheet.tsx`, undo/redo into bottom bar, desktop ≥md pixel-identical regression pass.
+M1 done, not yet committed. If resuming: check `git status` — uncommitted changes mean user hasn't committed; do NOT start M2 without explicit approval. Next work = **M2**: selection context bar (Delete/Duplicate/Style/Done on fabric `selection:created/updated`, docked above BottomToolbar — fixes critical P1) + PropertiesPanel/FileToolsPanel re-housed in bottom sheet on phones.

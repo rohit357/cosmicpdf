@@ -18,6 +18,7 @@ const Sidebar = dynamic(() => import('@/components/editor/Sidebar'), { ssr: fals
 const Toolbar = dynamic(() => import('@/components/editor/Toolbar'), { ssr: false });
 const CanvasEditor = dynamic(() => import('@/components/editor/Canvas'), { ssr: false });
 const PageStrip = dynamic(() => import('@/components/editor/PageStrip'), { ssr: false });
+const BottomToolbar = dynamic(() => import('@/components/editor/BottomToolbar'), { ssr: false });
 const PropertiesPanel = dynamic(() => import('@/components/editor/PropertiesPanel'), { ssr: false });
 const SignaturePad = dynamic(() => import('@/components/tools/SignaturePad'), { ssr: false });
 const ImageStamp = dynamic(() => import('@/components/tools/ImageStamp'), { ssr: false });
@@ -315,6 +316,8 @@ export default function EditorPage() {
             <PageStrip />
           </div>
           {viewMode === 'scroll' && <ScrollView />}
+          {/* Phone-only bottom navigation (undo/redo + tool sheets) */}
+          <BottomToolbar onUndo={handleUndo} onRedo={handleRedo} />
         </div>
 
         {/* Right Panel — hidden on mobile unless propertiesPanelOpen.

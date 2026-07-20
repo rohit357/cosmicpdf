@@ -2,6 +2,22 @@
 
 All notable changes to CosmicPDF are documented here.
 
+## Phase M1 — Mobile chrome: bottom navigation & tool sheets (2026-07-20)
+
+### Added
+
+- **Bottom navigation bar** (phones only): undo/redo plus five thumb-reach slots — Select, Text, Draw, Shapes, More — replacing the sidebar drawer as the mobile tool surface. Core tools are now one tap away instead of two.
+- **Bottom sheets** for tool groups: Draw (pen/highlight/eraser), Shapes (rect/circle/ellipse/line/arrow/redact), and More (sign, image, file tools, convert, optimize) open as native-style bottom sheets with large touch targets. Only one sheet can be open at a time (single `activeSheet` state).
+
+### Improved
+
+- **Slimmer mobile top bar**: undo/redo and zoom buttons moved out of the top toolbar on phones (undo/redo → bottom bar; zoom → pinch, double-tap, and kebab presets; the zoom % indicator remains, tap to reset). Hamburger removed.
+- Safe-area padding applied to the bottom bar and sheets (iPhone home indicator).
+
+### Notes
+
+- Desktop UI is untouched: sidebar, toolbar layout, panels and all behavior are identical at `md` and up. The new chrome is presentation-only — tools route through the same store actions; canvas/fabric pipeline unchanged, so Phase 2/3 performance and M0 behavior are preserved. Build passes; lint clean.
+
 ## Phase M0 — Mobile UX quick wins (2026-07-19)
 
 ### Added

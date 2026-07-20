@@ -8,10 +8,18 @@ import type { ToastMessage } from '@/types';
  */
 export type ViewMode = 'edit' | 'scroll';
 
+/**
+ * Mobile bottom-sheet panels (<md only). Single field guarantees at most one
+ * sheet is open at a time — opening one implicitly closes the rest.
+ * Desktop layout ignores this entirely.
+ */
+export type ActiveSheet = 'draw' | 'shapes' | 'more' | null;
+
 interface UIState {
   sidebarOpen: boolean;
   propertiesPanelOpen: boolean;
   viewMode: ViewMode;
+  activeSheet: ActiveSheet;
   loading: boolean;
   loadingMessage: string;
   toasts: ToastMessage[];
@@ -21,6 +29,7 @@ interface UIState {
   togglePropertiesPanel: () => void;
   setPropertiesPanelOpen: (open: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
+  setActiveSheet: (sheet: ActiveSheet) => void;
   setLoading: (loading: boolean, message?: string) => void;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
@@ -32,6 +41,7 @@ export const useUIStore = create<UIState>((set) => ({
   sidebarOpen: true,
   propertiesPanelOpen: true,
   viewMode: 'edit',
+  activeSheet: null,
   loading: false,
   loadingMessage: '',
   toasts: [],
@@ -41,6 +51,7 @@ export const useUIStore = create<UIState>((set) => ({
   togglePropertiesPanel: () => set((s) => ({ propertiesPanelOpen: !s.propertiesPanelOpen })),
   setPropertiesPanelOpen: (open) => set({ propertiesPanelOpen: open }),
   setViewMode: (mode) => set({ viewMode: mode }),
+  setActiveSheet: (sheet) => set({ activeSheet: sheet }),
   setLoading: (loading, message = '') => set({ loading, loadingMessage: message }),
 
   addToast: (toast) => {
