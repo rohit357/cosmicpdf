@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
   experimental: {
     largePageDataBytes: 512 * 1024,
   },
-  allowedDevOrigins: ['192.168.223.129'],
+  allowedDevOrigins: ['192.168.223.129', '10.47.232.129'],
 };
 
 export default nextConfig;

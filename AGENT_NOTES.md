@@ -19,7 +19,36 @@ Data flow: upload → bytes in pdfStore → pdfjs renders all pages to PNG data 
 
 # Current Phase
 
-Scroll-view feature (user-requested, between Phase 2.1 and Phase 3). COMPLETE, awaiting user review/commit.
+Mobile UX roadmap (approved plan: M0–M4). **Phase M0 (quick wins) COMPLETE**, awaiting user review/commit. Phase 3 (touch) also uncommitted in same tree.
+
+# Completed
+
+Phase M0 (mobile UX quick wins) — per approved plan:
+1. M0.1 Safe areas: `export const viewport: Viewport` with `viewportFit: 'cover'` in `layout.tsx`; `pb-[env(safe-area-inset-bottom)]` on PageStrip container.
+2. M0.2 Coarse-pointer targets (Tailwind 4 native `pointer-coarse:` variant, verified in dist): Sidebar tool rows `pointer-coarse:py-3`; PageStrip nav buttons `pointer-coarse:h-11 w-11`; PageStrip delete button always visible on touch (`pointer-coarse:opacity-100`) + larger (`pointer-coarse:w-7 h-7`). Top Toolbar sizing deferred to M1 (12 controls × 44px can't fit 375px — needs the M1 restructure).
+3. M0.3 Drag-to-erase: eraser fires on `pointermove` while pressed (`e.isPrimary && e.buttons !== 0`) — intentional desktop change too (plan D6.4).
+4. M0.4 Double-tap zoom: container pointerdown, touch-only, select-tool-only; 300 ms / 32 px window; toggles `setZoom(zoom < 1.25 ? 1.5 : 1)`; pinch start clears `lastTapRef` so pinch never triggers it.
+5. M0.5 A11y sweep: `aria-label` on all icon-only buttons (Toolbar ×12 incl. kebab `aria-expanded`, PageStrip nav/delete, Sidebar close); home page wrapped in `<MotionConfig reducedMotion="user">`; contrast `text-white/40` → `/60` on body/label text.
+6. M0.5 Home mobile pass: hero `text-4xl sm:text-6xl md:text-8xl` (was `text-6xl` base — overflowed ≤360px); blur orbs halved (300/250px, blur 60px) on <md, third orb hidden on <md (paint cost on low-end phones).
+
+Design decisions (M0):
+- `pointer-coarse:` (capability) over width breakpoints for target sizing — iPad gets desktop layout with finger targets (plan D1).
+- Drag-to-erase changes desktop too, deliberately — plan D6.4 judged strictly better.
+- Double-tap restricted to select tool: draw tools own single taps; any zoom-on-double-tap while drawing = data loss risk.
+- Orb diet uses smaller size + weaker blur rather than removal on <md — keeps brand look, cuts paint area ~75%.
+
+Phase 3 (touch + responsive) — all changes in Canvas.tsx + fabricManager.ts:
+1. Pointer events (Task 1). Canvas draw/place/erase overlay converted from mouse events to pointer events (`onPointerDown/Move/Up/Cancel`). `getCanvasCoords` now takes a `{clientX, clientY}` shape (works for mouse, touch, pen). Overlay gets `touchAction: 'none'` so finger-drawing doesn't scroll the page; pointer capture keeps events flowing if the finger leaves the overlay. Only the primary pointer starts a draw (`e.isPrimary`) so a second finger can't hijack an in-progress op. Fabric's own object select/move already worked on touch via its internal handlers.
+2. Pinch-zoom + one-finger pan (Task 2). Scroll container tracks touch pointers in a `Map`; when 2 land, captures a pinch baseline (finger distance + current zoom) and scales `editorStore` zoom by the distance ratio (store clamps 0.25–3). Container keeps `touchAction: 'pan-x pan-y'`, so single-finger scroll still pans the page naturally. Draw overlay only appears for draw tools, so pinch and draw don't conflict.
+3. Touch targets + responsive (Task 3). Canvas padding `p-8` → `p-2 md:p-8` (more draw area on phones, desktop unchanged). Fabric object handles enlarged for fingers via `FabricObject.ownDefaults.cornerSize=16` + `touchCornerSize=40`.
+
+Design decisions (Phase 3):
+- Coordinate math unchanged (still divide by zoom) — pointer events share `clientX/Y` with mouse events, so the existing formula is correct; only the event source changed. Root cause of "no touch" was mouse-only listeners + missing touch-action, not the coord math.
+- Eraser kept as press-only (not continuous drag-erase) to preserve exact desktop behavior — no scope creep.
+- Pinch scales the existing CSS `transform: scale()` zoom rather than fabric's internal zoom → keeps one zoom source of truth, no change to export/coord paths.
+- CSS `hidden` reused for scroll mode (from scroll-view feature) — untouched.
+
+Scroll-view feature (user-requested, between Phase 2.1 and Phase 3). COMPLETE, committed.
 
 # Completed
 
@@ -58,7 +87,11 @@ Phase 1 (all tasks):
 
 # Remaining
 
-- Phase 3 — responsiveness: pointer events (touch), mobile editor layout, home page mobile pass
+- Mobile UX plan (approved; see `C:\Users\Admin\.claude\plans\anlayse-the-codebase-important-bubbly-treasure.md`):
+  - M1 — mobile chrome: `activeSheet` single-panel state, BottomToolbar `<md`, tool sheets, undo/redo relocation, slimmed top bar
+  - M2 — selection context bar (fixes critical P1: no touch path to delete object) + properties bottom sheet
+  - M3 — pinch focal anchoring, two-finger pan in select mode, keyboard/visualViewport text-editing handling, landscape slim chrome
+  - M4 — page-grid virtualization (if needed), haptics, z-order buttons
 - Phase 4 — feature fixes: undo/redo off-by-one, PageStrip delete updates state (not download), inflatePDF rewrite, offscreen export canvas
 - Phase 5 — additions: page-numbers tool, export quality option
 
@@ -83,9 +116,9 @@ Phase 1 (all tasks):
 - Undo restores pushed snapshot, not prior state — first-edit undo broken (Phase 4)
 - PageStrip per-thumbnail delete downloads new PDF instead of updating editor (Phase 4)
 - `inflatePDF` padding approach unreliable (zeros after IEND) (Phase 4)
-- Canvas overlay mouse-only — no touch (Phase 3)
-- Editor mouse coords divide by zoom; fragile if zoom mechanism changes (Phase 3)
+- Canvas overlay touch: RESOLVED in Phase 3 (pointer events + touch-action + pinch-zoom)
 - `compressPDF` / `pdf-to-img` still re-parse the doc per operation — independent one-shot flows, left as-is (low value, higher risk than editor render path)
+- Home page mobile pass: RESOLVED in M0 (hero clamp, orb diet, reduced motion, contrast)
 
 # Validation History
 
@@ -94,7 +127,9 @@ Phase 1 (all tasks):
 - Post-Phase-2: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings
 - Post-Phase-2.1: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no hydration/destructure errors in dev log
 - Post-scroll-view: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
+- Post-Phase-3: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
+- Post-M0: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 
 # Next Session
 
-Phase 2 done, not yet committed. If resuming: check `git status` — uncommitted `src/` changes mean user hasn't committed yet; do not start Phase 3 without explicit approval. Next work = Phase 3 (responsiveness: pointer/touch events, mobile editor layout, home mobile pass) after user approval.
+M0 done, not yet committed (tree also holds Phase 3 + allowedDevOrigins). If resuming: check `git status` — uncommitted `src/` changes mean user hasn't committed; do NOT start M1 without explicit approval. Next work = **M1 (mobile chrome)** per approved plan: `activeSheet` uiStore field, BottomToolbar `<md`, tool sheets from existing `ui/sheet.tsx`, undo/redo into bottom bar, desktop ≥md pixel-identical regression pass.

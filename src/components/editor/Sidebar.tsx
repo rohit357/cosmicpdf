@@ -152,6 +152,7 @@ export default function Sidebar() {
           <button
             className="md:hidden text-white/50 hover:text-white p-1"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Close sidebar"
           >
             <X className="w-5 h-5" />
           </button>
@@ -189,7 +190,7 @@ export default function Sidebar() {
                         <TooltipTrigger
                             onClick={() => handleToolSelect(tool.id)}
                             className={`
-                              w-full flex items-center gap-3 px-4 py-2 text-sm transition-all duration-150
+                              w-full flex items-center gap-3 px-4 py-2 pointer-coarse:py-3 text-sm transition-all duration-150
                               ${isActive
                                 ? 'text-white bg-[rgba(220,38,38,0.1)] border-l-2 border-l-[#DC2626]'
                                 : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B] border-l-2 border-l-transparent'

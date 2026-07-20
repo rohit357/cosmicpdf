@@ -108,6 +108,7 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
           href="/"
           className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors shrink-0"
           title="Back to home"
+          aria-label="Back to home"
         >
           <ArrowLeft className="w-4 h-4" />
         </Link>
@@ -118,6 +119,7 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
           className="h-8 w-8 md:hidden shrink-0"
           onClick={toggleSidebar}
           title="Toggle Sidebar"
+          aria-label="Toggle sidebar"
         >
           <Menu className="w-4 h-4" />
         </Button>
@@ -130,28 +132,28 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
 
       {/* Center: Undo/Redo + Zoom */}
       <div className="flex items-center gap-0.5 md:gap-1">
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">
           <Undo2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">
           <Redo2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </Button>
 
         <div className="w-px h-4 md:h-5 bg-[#E2E8F0] mx-1 md:mx-2" />
 
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setZoom(zoom - 0.1)} title="Zoom Out">
+        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setZoom(zoom - 0.1)} title="Zoom Out" aria-label="Zoom out">
           <ZoomOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </Button>
         <button
           className="text-[10px] md:text-xs font-medium text-[#64748B] min-w-[32px] md:min-w-[40px] text-center hover:text-[#0F172A] cursor-pointer transition-colors"
-          onClick={() => setZoom(1)} title="Reset zoom"
+          onClick={() => setZoom(1)} title="Reset zoom" aria-label="Reset zoom to 100%"
         >
           {Math.round(zoom * 100)}%
         </button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setZoom(zoom + 0.1)} title="Zoom In">
+        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setZoom(zoom + 0.1)} title="Zoom In" aria-label="Zoom in">
           <ZoomIn className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 hidden sm:flex" onClick={() => setZoom(1)} title="Fit to Page">
+        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 hidden sm:flex" onClick={() => setZoom(1)} title="Fit to Page" aria-label="Fit to page">
           <Maximize2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </Button>
 
@@ -164,6 +166,7 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
           className="h-7 w-7 md:h-8 md:w-8"
           onClick={() => setViewMode(viewMode === 'edit' ? 'scroll' : 'edit')}
           title={viewMode === 'edit' ? 'Scroll view (all pages)' : 'Back to edit'}
+          aria-label={viewMode === 'edit' ? 'Switch to scroll view' : 'Switch to edit view'}
         >
           {viewMode === 'edit'
             ? <ScrollText className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -174,7 +177,7 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
       {/* Right: Upload + Download + Properties toggle (mobile) + More */}
       <div className="flex items-center gap-1 md:gap-2">
         <input ref={fileInputRef} type="file" accept="application/pdf" onChange={handleFileUpload} className="hidden" />
-        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 hidden sm:flex" onClick={() => fileInputRef.current?.click()} title="Open PDF">
+        <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 hidden sm:flex" onClick={() => fileInputRef.current?.click()} title="Open PDF" aria-label="Open PDF file">
           <Upload className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </Button>
 
@@ -194,13 +197,14 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
           className="h-7 w-7 md:hidden"
           onClick={togglePropertiesPanel}
           title="Toggle Properties"
+          aria-label="Toggle properties panel"
         >
           <PanelRightOpen className="w-4 h-4" />
         </Button>
 
         {/* More Options */}
         <div className="relative" ref={menuRef}>
-          <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setShowMoreMenu(!showMoreMenu)} title="More Options">
+          <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setShowMoreMenu(!showMoreMenu)} title="More Options" aria-label="More options" aria-expanded={showMoreMenu}>
             <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24">
               <circle cx="12" cy="5" r="1.5" fill="currentColor" />
               <circle cx="12" cy="12" r="1.5" fill="currentColor" />

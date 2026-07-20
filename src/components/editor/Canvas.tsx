@@ -30,9 +30,18 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   // Track if an object was already placed for click-place tools (one-shot)
   const hasPlacedRef = useRef(false);
 
+  // Pinch-zoom state: active touch pointers on the scroll container and the
+  // pinch baseline (finger distance + zoom) captured when the 2nd finger lands.
+  const pinchPointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchBaseline = useRef<{ distance: number; zoom: number } | null>(null);
+
+  // Double-tap detection (touch): last tap time + position.
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+
   const currentPageIndex = useEditorStore((s) => s.currentPageIndex);
   const activeTool = useEditorStore((s) => s.activeTool);
   const zoom = useEditorStore((s) => s.zoom);
+  const setZoom = useEditorStore((s) => s.setZoom);
   const setActiveTool = useEditorStore((s) => s.setActiveTool);
   const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
   const drawingOptions = useEditorStore((s) => s.drawingOptions);
@@ -57,9 +66,11 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
     return () => setActiveCanvas(null);
   }, []);
 
-  // Helper: get canvas-local coordinates from a mouse event
+  // Helper: get canvas-local coordinates from a pointer/mouse event.
+  // Divides by zoom because the page wrapper is CSS-scaled; clientX/Y are in
+  // screen space, fabric objects live in unscaled canvas space.
   const getCanvasCoords = useCallback(
-    (e: React.MouseEvent) => {
+    (e: { clientX: number; clientY: number }) => {
       const rect = canvasElRef.current!.parentElement!.getBoundingClientRect();
       return {
         x: (e.clientX - rect.left) / zoom,
@@ -275,7 +286,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   // Pro behavior: place ONE object → auto-switch to select
   // =============================================
   const handleClickPlace = useCallback(
-    async (e: React.MouseEvent) => {
+    async (e: React.PointerEvent) => {
       if (!canvasRef.current) return;
 
       // Prevent double-placing — one-shot per tool activation
@@ -347,7 +358,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   // DRAG-TO-DRAW handlers (rectangle, circle, ellipse, line, arrow)
   // =============================================
   const handleDragStart = useCallback(
-    async (e: React.MouseEvent) => {
+    async (e: React.PointerEvent) => {
       if (!canvasRef.current || !DRAG_DRAW_TOOLS.includes(activeTool)) return;
 
       const { x, y } = getCanvasCoords(e);
@@ -374,7 +385,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   );
 
   const handleDragMove = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.PointerEvent) => {
       if (!isDragging.current || !dragShapeRef.current || !canvasRef.current) return;
 
       const { x, y } = getCanvasCoords(e);
@@ -431,7 +442,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   // ERASER handler
   // =============================================
   const handleEraser = useCallback(
-    async (e: React.MouseEvent) => {
+    async (e: React.PointerEvent) => {
       if (!canvasRef.current || activeTool !== 'eraser') return;
 
       const { x, y } = getCanvasCoords(e);
@@ -445,10 +456,19 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   );
 
   // =============================================
-  // Unified mouse handlers
+  // Unified pointer handlers (mouse, touch, pen)
   // =============================================
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      // Only react to the primary pointer; multi-touch (pinch) is handled by
+      // the container and must not start a draw/place operation.
+      if (!e.isPrimary) return;
+      // Capture so we keep receiving move/up even if the finger leaves the overlay.
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        // ignore capture errors (unsupported / already released)
+      }
       if (CLICK_PLACE_TOOLS.includes(activeTool)) {
         handleClickPlace(e);
       } else if (DRAG_DRAW_TOOLS.includes(activeTool)) {
@@ -460,20 +480,31 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
     [activeTool, handleClickPlace, handleDragStart, handleEraser]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
       if (DRAG_DRAW_TOOLS.includes(activeTool)) {
         handleDragMove(e);
+      } else if (activeTool === 'eraser' && e.isPrimary && e.buttons !== 0) {
+        // Drag-to-erase: keep erasing while the pointer is pressed and moving.
+        handleEraser(e);
       }
     },
-    [activeTool, handleDragMove]
+    [activeTool, handleDragMove, handleEraser]
   );
 
-  const handleMouseUp = useCallback(() => {
-    if (DRAG_DRAW_TOOLS.includes(activeTool)) {
-      handleDragEnd();
-    }
-  }, [activeTool, handleDragEnd]);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      if (DRAG_DRAW_TOOLS.includes(activeTool)) {
+        handleDragEnd();
+      }
+    },
+    [activeTool, handleDragEnd]
+  );
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -515,10 +546,74 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
     CLICK_PLACE_TOOLS.includes(activeTool) ||
     activeTool === 'eraser';
 
+  // =============================================
+  // Pinch-to-zoom (two-finger) on the scroll container.
+  // A pinch pinches the whole page wrapper via the existing CSS zoom; the
+  // browser still handles one-finger scroll (pan) because touchAction stays
+  // 'pan-x pan-y' on the container.
+  // =============================================
+  const handleContainerPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return;
+    pinchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinchPointers.current.size === 2) {
+      const [a, b] = Array.from(pinchPointers.current.values());
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      pinchBaseline.current = { distance, zoom };
+      lastTapRef.current = null; // a pinch is not a tap
+      return;
+    }
+
+    // Double-tap zoom (select mode only — draw tools use taps to place objects):
+    // two taps within 300ms and 32px toggle between 100% and 150%.
+    if (activeTool === 'select' && pinchPointers.current.size === 1) {
+      const now = performance.now();
+      const last = lastTapRef.current;
+      if (
+        last &&
+        now - last.time < 300 &&
+        Math.hypot(e.clientX - last.x, e.clientY - last.y) < 32
+      ) {
+        lastTapRef.current = null;
+        setZoom(zoom < 1.25 ? 1.5 : 1);
+      } else {
+        lastTapRef.current = { time: now, x: e.clientX, y: e.clientY };
+      }
+    }
+  }, [zoom, setZoom, activeTool]);
+
+  const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return;
+    if (!pinchPointers.current.has(e.pointerId)) return;
+    pinchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pinchPointers.current.size === 2 && pinchBaseline.current) {
+      const [a, b] = Array.from(pinchPointers.current.values());
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      const { distance: baseDist, zoom: baseZoom } = pinchBaseline.current;
+      if (baseDist > 0) {
+        const nextZoom = baseZoom * (distance / baseDist);
+        setZoom(nextZoom); // store clamps to [0.25, 3]
+      }
+    }
+  }, [setZoom]);
+
+  const handleContainerPointerUp = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return;
+    pinchPointers.current.delete(e.pointerId);
+    if (pinchPointers.current.size < 2) {
+      pinchBaseline.current = null;
+    }
+  }, []);
+
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-auto bg-[#F1F5F9] flex items-start justify-center p-8"
+      className="flex-1 overflow-auto bg-[#F1F5F9] flex items-start justify-center p-2 md:p-8"
+      style={{ touchAction: 'pan-x pan-y' }}
+      onPointerDown={handleContainerPointerDown}
+      onPointerMove={handleContainerPointerMove}
+      onPointerUp={handleContainerPointerUp}
+      onPointerCancel={handleContainerPointerUp}
     >
       <div
         className="relative shadow-2xl"
@@ -529,17 +624,19 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
       >
         <canvas ref={canvasElRef} />
 
-        {/* Transparent overlay that captures mouse events for draw/place/eraser tools.
-            Prevents events from reaching Fabric's internal handlers to avoid
-            accidentally selecting existing objects while placing new ones. */}
+        {/* Transparent overlay that captures pointer events for draw/place/eraser
+            tools. Prevents events from reaching Fabric's internal handlers to
+            avoid accidentally selecting existing objects while placing new ones.
+            touchAction 'none' stops the browser from scrolling/zooming the page
+            when drawing with a finger. */}
         {needsOverlay && (
           <div
             className="absolute inset-0 z-10"
-            style={{ cursor: getCursor() }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            style={{ cursor: getCursor(), touchAction: 'none' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
           />
         )}
       </div>

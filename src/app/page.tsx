@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, MotionConfig } from 'framer-motion';
 import { usePdfStore } from '@/store/pdfStore';
 import { useToastStore } from '@/components/ui/ToastProvider';
 import { ToastContainer } from '@/components/ui/toast-container';
@@ -165,6 +165,7 @@ export default function HomePage() {
   }, [handleFile]);
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen bg-[#060812] text-white font-sans overflow-x-hidden">
       <ToastContainer />
 
@@ -181,11 +182,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Ambient gradient mesh background */}
+      {/* Ambient gradient mesh background — orbs shrink/hide on small screens
+          (large blur() surfaces are expensive to paint on low-end phones) */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#6366F1]/20 blur-[120px]" />
-        <div className="absolute top-[30%] right-[-15%] w-[500px] h-[500px] rounded-full bg-[#EC4899]/15 blur-[120px]" />
-        <div className="absolute bottom-0 left-[20%] w-[700px] h-[400px] rounded-full bg-[#10B981]/10 blur-[120px]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[300px] h-[300px] md:w-[600px] md:h-[600px] rounded-full bg-[#6366F1]/20 blur-[60px] md:blur-[120px]" />
+        <div className="absolute top-[30%] right-[-15%] w-[250px] h-[250px] md:w-[500px] md:h-[500px] rounded-full bg-[#EC4899]/15 blur-[60px] md:blur-[120px]" />
+        <div className="absolute bottom-0 left-[20%] w-[700px] h-[400px] rounded-full bg-[#10B981]/10 blur-[120px] hidden md:block" />
         {/* Grid overlay */}
         <div
           className="absolute inset-0 opacity-[0.04]"
@@ -236,7 +238,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.08 }}
-            className="text-6xl md:text-8xl font-black tracking-tight leading-[1.05] mb-6"
+            className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tight leading-[1.05] mb-6"
           >
             <span className="text-white">CosmicPDF.</span>
             <br />
@@ -294,7 +296,7 @@ export default function HomePage() {
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold text-white mb-1">Drop PDF here</p>
-                  <p className="text-sm text-white/40">or click to browse — max 100MB</p>
+                  <p className="text-sm text-white/60">or click to browse — max 100MB</p>
                 </div>
                 <div className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white font-bold text-sm shadow-lg shadow-[#6366F1]/30 hover:opacity-90 transition-opacity">
                   Select PDF File
@@ -317,7 +319,7 @@ export default function HomePage() {
               className="text-center"
             >
               <div className="text-3xl font-black bg-gradient-to-r from-[#A78BFA] to-[#6366F1] bg-clip-text text-transparent">{s.value}</div>
-              <div className="text-xs font-semibold text-white/40 uppercase tracking-widest mt-1">{s.label}</div>
+              <div className="text-xs font-semibold text-white/60 uppercase tracking-widest mt-1">{s.label}</div>
             </motion.div>
           ))}
         </div>
@@ -333,7 +335,7 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="text-3xl md:text-5xl font-black text-white mb-4">Everything you need.</h2>
-            <p className="text-white/40 text-lg">Click any card to launch the tool instantly.</p>
+            <p className="text-white/60 text-lg">Click any card to launch the tool instantly.</p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -370,7 +372,7 @@ export default function HomePage() {
                   </div>
 
                   <h3 className="font-bold text-white text-base mb-1.5">{tool.name}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{tool.description}</p>
+                  <p className="text-white/60 text-sm leading-relaxed">{tool.description}</p>
 
                   {tool.isEditor && (
                     <span className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/30">
@@ -438,5 +440,6 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+    </MotionConfig>
   );
 }

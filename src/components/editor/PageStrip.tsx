@@ -36,14 +36,15 @@ export default function PageStrip() {
   };
 
   return (
-    <div className="h-[100px] bg-white border-t border-[#E2E8F0] flex items-center shrink-0">
+    <div className="h-[100px] bg-white border-t border-[#E2E8F0] flex items-center shrink-0 pb-[env(safe-area-inset-bottom)]">
       {/* Page navigation */}
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 shrink-0 ml-2"
+        className="h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 shrink-0 ml-2"
         disabled={currentPageIndex === 0}
         onClick={() => setCurrentPage(currentPageIndex - 1)}
+        aria-label="Previous page"
       >
         <ChevronLeft className="w-4 h-4" />
       </Button>
@@ -91,9 +92,10 @@ export default function PageStrip() {
                       e.stopPropagation();
                       handleDeletePage(index);
                     }}
-                    className="absolute top-0.5 right-0.5 w-5 h-5 bg-[#DC2626] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#B91C1C] z-10"
+                    className="absolute top-0.5 right-0.5 w-5 h-5 pointer-coarse:w-7 pointer-coarse:h-7 bg-[#DC2626] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity hover:bg-[#B91C1C] z-10"
+                    aria-label={`Delete page ${index + 1}`}
                   >
-                    <Trash2 className="w-2.5 h-2.5 text-white" />
+                    <Trash2 className="w-2.5 h-2.5 pointer-coarse:w-3.5 pointer-coarse:h-3.5 text-white" />
                   </button>
                 )}
               </div>
@@ -108,9 +110,10 @@ export default function PageStrip() {
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 w-8 shrink-0 mr-2"
+        className="h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 shrink-0 mr-2"
         disabled={currentPageIndex >= pages.length - 1}
         onClick={() => setCurrentPage(currentPageIndex + 1)}
+        aria-label="Next page"
       >
         <ChevronRight className="w-4 h-4" />
       </Button>

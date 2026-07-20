@@ -47,6 +47,11 @@ export async function initCanvas(
     fireRightClick: true,
   });
 
+  // Larger selection/resize handles so objects can be grabbed with a finger.
+  // Applies to every object drawn on this canvas.
+  fabric.FabricObject.ownDefaults.cornerSize = 16;
+  fabric.FabricObject.ownDefaults.touchCornerSize = 40;
+
   return canvas;
 }
 
