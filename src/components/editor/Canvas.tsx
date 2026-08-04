@@ -47,6 +47,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
   const drawingOptions = useEditorStore((s) => s.drawingOptions);
   const textOptions = useEditorStore((s) => s.textOptions);
   const shapeOptions = useEditorStore((s) => s.shapeOptions);
+  const highlightOptions = useEditorStore((s) => s.highlightOptions);
 
   const pages = usePdfStore((s) => s.pages);
   const canvasStates = usePdfStore((s) => s.canvasStates);
@@ -123,6 +124,9 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         }
         canvasRef.current = null;
       }
+      // Dispose drops fabric listeners, so selection:cleared never fires —
+      // reset selection state explicitly (keeps the mobile context bar honest).
+      setSelectedElement(null);
 
       const canvas = await initCanvas(canvasElRef.current, width, height);
       // Effect was cleaned up while the canvas was being created — tear it down.
@@ -160,15 +164,18 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         if (!mounted || canvas !== canvasRef.current) return;
       }
 
-      // Event listeners
-      canvas.on('selection:created', (e) => {
-        const obj = e.selected?.[0];
-        if (obj) setSelectedElement(obj.toString());
-      });
+      // Event listeners.
+      // Selection state is read back from the canvas rather than from the event
+      // payload: `selection:updated` also fires when a member is removed from a
+      // multi-selection, and its `selected` array is empty then.
+      const syncSelection = () => {
+        const active = canvas.getActiveObject();
+        setSelectedElement(active ? active.toString() : null);
+      };
 
-      canvas.on('selection:cleared', () => {
-        setSelectedElement(null);
-      });
+      canvas.on('selection:created', syncSelection);
+      canvas.on('selection:updated', syncSelection);
+      canvas.on('selection:cleared', syncSelection);
 
       canvas.on('object:modified', () => {
         const json = JSON.stringify(canvas.toJSON());
@@ -251,7 +258,13 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
       );
 
       if (activeTool === 'pen') {
-        await enableDrawingMode(canvas, drawingOptions.color, drawingOptions.width, drawingOptions.brushType);
+        await enableDrawingMode(
+          canvas,
+          drawingOptions.color,
+          drawingOptions.width,
+          drawingOptions.brushType,
+          drawingOptions.opacity
+        );
       } else {
         disableDrawingMode(canvas);
       }
@@ -263,6 +276,10 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         CLICK_PLACE_TOOLS.includes(activeTool) ||
         activeTool === 'eraser'
       ) {
+        // Drop any existing selection: its handles disappear with
+        // selectable=false, but fabric would still report an active object —
+        // leaving the mobile selection bar acting on something invisible.
+        canvas.discardActiveObject();
         canvas.selection = false;
         canvas.forEachObject((obj) => {
           obj.selectable = false;
@@ -324,7 +341,14 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         }
 
         case 'highlight': {
-          const highlight = await elements.createHighlight(x, y);
+          const highlight = await elements.createHighlight(
+            x,
+            y,
+            undefined,
+            undefined,
+            highlightOptions.color,
+            highlightOptions.opacity
+          );
           canvas.add(highlight);
           placedObj = highlight;
           break;
@@ -351,7 +375,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         canvas.renderAll();
       }
     },
-    [activeTool, textOptions, getCanvasCoords, saveState, canvasRef, switchToSelect]
+    [activeTool, textOptions, highlightOptions, getCanvasCoords, saveState, canvasRef, switchToSelect]
   );
 
   // =============================================
@@ -513,9 +537,12 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
 
       // Delete selected object
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Don't delete if editing text
         const activeObj = canvasRef.current.getActiveObject();
-        if (activeObj && (activeObj as unknown as { isEditing?: boolean }).isEditing) return;
+        // Nothing selected: no edit to record. Saving here pushed a snapshot
+        // identical to the previous one, so the next undo appeared to do nothing.
+        if (!activeObj) return;
+        // Don't delete if editing text
+        if ((activeObj as unknown as { isEditing?: boolean }).isEditing) return;
 
         const { deleteSelectedObject } = await import('@/lib/canvas/fabricManager');
         deleteSelectedObject(canvasRef.current);

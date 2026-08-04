@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useRef, useCallback, useState, useEffect } from 'react';
 import Link from 'next/link';
+import { hasPropertiesContent } from '@/lib/editor/toolPanels';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
@@ -23,13 +24,14 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
+  const activeTool = useEditorStore((s) => s.activeTool);
   const zoom = useEditorStore((s) => s.zoom);
   const setZoom = useEditorStore((s) => s.setZoom);
   const fileName = usePdfStore((s) => s.fileName);
   const setFile = usePdfStore((s) => s.setFile);
   const canUndo = useHistoryStore((s) => s.undoStack.length > 0);
   const canRedo = useHistoryStore((s) => s.redoStack.length > 0);
-  const togglePropertiesPanel = useUIStore((s) => s.togglePropertiesPanel);
+  const setActiveSheet = useUIStore((s) => s.setActiveSheet);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const addToast = useToastStore((s) => s.addToast);
@@ -152,12 +154,17 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
 
         <div className="hidden md:block w-px h-5 bg-[#E2E8F0] mx-2" />
 
-        {/* View mode: single-page edit vs continuous scroll preview */}
+        {/* View mode: single-page edit vs continuous scroll preview.
+            Switching closes any mobile sheet: the bottom toolbar unmounts in
+            scroll mode, so a sheet left open would pop back on return. */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 md:h-8 md:w-8"
-          onClick={() => setViewMode(viewMode === 'edit' ? 'scroll' : 'edit')}
+          className="h-7 w-7 md:h-8 md:w-8 pointer-coarse:h-11 pointer-coarse:w-11"
+          onClick={() => {
+            setActiveSheet(null);
+            setViewMode(viewMode === 'edit' ? 'scroll' : 'edit');
+          }}
           title={viewMode === 'edit' ? 'Scroll view (all pages)' : 'Back to edit'}
           aria-label={viewMode === 'edit' ? 'Switch to scroll view' : 'Switch to edit view'}
         >
@@ -183,21 +190,26 @@ export default function Toolbar({ onExport, onUndo, onRedo }: ToolbarProps) {
           <span className="hidden sm:inline">Download</span>
         </Button>
 
-        {/* Properties panel toggle (mobile) */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 md:hidden"
-          onClick={togglePropertiesPanel}
-          title="Toggle Properties"
-          aria-label="Toggle properties panel"
-        >
-          <PanelRightOpen className="w-4 h-4" />
-        </Button>
+        {/* Properties sheet (mobile) — desktop panel is always visible ≥md.
+            Hidden for signature/image tools: their options are already on screen
+            in the overlay panel, so the sheet would open empty. Hidden in scroll
+            mode too: the sheet only opens in edit mode, so the tap did nothing. */}
+        {viewMode === 'edit' && hasPropertiesContent(activeTool) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 pointer-coarse:h-11 pointer-coarse:w-11 md:hidden"
+            onClick={() => setActiveSheet('properties')}
+            title="Tool Properties"
+            aria-label="Open tool properties"
+          >
+            <PanelRightOpen className="w-4 h-4" />
+          </Button>
+        )}
 
         {/* More Options */}
         <div className="relative" ref={menuRef}>
-          <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => setShowMoreMenu(!showMoreMenu)} title="More Options" aria-label="More options" aria-expanded={showMoreMenu}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 pointer-coarse:h-11 pointer-coarse:w-11" onClick={() => setShowMoreMenu(!showMoreMenu)} title="More Options" aria-label="More options" aria-expanded={showMoreMenu}>
             <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24">
               <circle cx="12" cy="5" r="1.5" fill="currentColor" />
               <circle cx="12" cy="12" r="1.5" fill="currentColor" />

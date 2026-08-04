@@ -4,6 +4,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { useHistoryStore } from '@/store/historyStore';
 import { useUIStore, type ActiveSheet } from '@/store/uiStore';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { FILE_PANEL_TOOLS } from '@/lib/editor/toolPanels';
 import type { ActiveTool } from '@/types';
 import {
   MousePointer2, Type, PenTool, Shapes, MoreHorizontal,
@@ -101,7 +102,10 @@ export default function BottomToolbar({ onUndo, onRedo }: BottomToolbarProps) {
 
   const selectTool = (id: ActiveTool) => {
     setActiveTool(id);
-    setActiveSheet(null);
+    // File/convert/optimize tools: their whole UI is the properties sheet.
+    // Everything else just closes whatever sheet was open (signature/image tools
+    // get the editor page's own overlay panel).
+    setActiveSheet(FILE_PANEL_TOOLS.includes(id) ? 'properties' : null);
   };
 
   const slotClass = (active: boolean) => `

@@ -86,6 +86,12 @@ export interface DrawingOptions {
   brushType: 'pencil' | 'spray' | 'circle';
 }
 
+/** Options for the highlight tool (a semi-transparent rectangle). */
+export interface HighlightOptions {
+  color: string;
+  opacity: number;
+}
+
 export interface WatermarkOptions {
   text: string;
   fontSize: number;

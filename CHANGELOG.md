@@ -2,6 +2,44 @@
 
 All notable changes to CosmicPDF are documented here.
 
+## Phase M2.5 — Correctness & UX consistency (2026-08-04)
+
+### Fixed
+
+- **The pen's opacity slider now works.** It (and its live preview) had no effect on the actual stroke — the value never reached the brush.
+- **The highlight tool showed the wrong options entirely**: font family, size, bold/italic/underline, none of which changed anything. Highlight now has its own colour and opacity controls, with a marker-pen palette, and they apply to the highlight you place.
+- **Undo no longer does nothing after a stray Delete press.** Pressing Delete with nothing selected recorded a duplicate history entry, so the next undo silently consumed it.
+- Switching from Select to a drawing or placement tool now clears the selection, so the phone selection bar can't act on an object whose handles are gone.
+- The tool-properties button no longer appears in scroll view, where its panel cannot open; switching views also closes any open sheet, which previously reappeared on returning to edit mode.
+- Signature and image tools can no longer open an empty properties sheet — the sheet, its button and the panel now agree on which tools have options, from one shared list.
+
+### Improved
+
+- Honest labels: the reorder panel said "drag pages" though only arrow buttons exist, and the page thumbnail's red button is now described as what it does — download a copy without that page, leaving the open document unchanged.
+- Touch-appropriate wording in the mobile sheet ("tap" instead of "click", selection-bar instead of Delete-key tips, no keyboard-shortcut table, no reference to a sidebar that phones don't have). Desktop copy is unchanged.
+- Accessibility on the controls this phase touched: every colour swatch and colour picker now has a name and a pressed state for screen readers, page reorder arrows and page-selection cells are labelled, and the reorder arrows plus top-bar buttons meet touch-target size on touch devices.
+
+### Notes
+
+- Audit-driven correctness pass, not a feature phase: no redesign, no new UI. Desktop behavior is unchanged apart from the two dead controls now working (pen opacity, highlight options), which is the point of the fix. Object duplication was verified against a real fabric canvas, including multi-selection. Build passes; lint clean.
+
+## Phase M2 — Mobile selection actions & properties sheet (2026-07-20)
+
+### Added
+
+- **Selection context bar** (phones only): selecting any object on the canvas shows a Delete · Duplicate · Done bar above the bottom navigation. This closes the most critical touch gap — previously a selected object could only be deleted with a hardware keyboard.
+- **Duplicate**: one tap clones the selected object (or multi-selection) with a small offset.
+- **Properties bottom sheet** (phones only): tool properties and the file-tools panel (merge, split, rotate, reorder, delete pages, convert, compress, watermark) now open in a bottom sheet. Picking a file tool from the More menu opens its panel directly — previously the tap changed state with nothing visible.
+
+### Improved
+
+- Selection state now tracks `selection:updated` (switching between objects) and resets on page re-initialization, so selection-dependent UI never goes stale.
+- The top-bar properties button on phones opens the new sheet (the old toggle only affected a panel that is hidden on phones).
+
+### Notes
+
+- Desktop UI byte-identical at `md` and up: PropertiesPanel gained a `variant` prop, desktop markup unchanged. All actions route through the existing canvas helpers and the same save/undo path. A "Style" action for live object styling was deliberately deferred: the properties panel edits tool defaults (same as desktop), and live styling is a new feature, not a re-housing. Build passes; lint clean.
+
 ## Phase M1 — Mobile chrome: bottom navigation & tool sheets (2026-07-20)
 
 ### Added

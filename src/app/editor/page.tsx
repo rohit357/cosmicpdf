@@ -12,6 +12,8 @@ import { renderPDFProgressive, DEFAULT_RENDER_SCALE } from '@/lib/pdf/renderer';
 import { exportAnnotatedPDF, downloadPDF } from '@/lib/pdf/engine';
 import dynamic from 'next/dynamic';
 import type { Canvas as FabricCanvas } from 'fabric';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { SIGNATURE_TOOLS, IMAGE_TOOLS, hasPropertiesContent } from '@/lib/editor/toolPanels';
 
 // Dynamically import heavy UI components
 const Sidebar = dynamic(() => import('@/components/editor/Sidebar'), { ssr: false });
@@ -19,6 +21,7 @@ const Toolbar = dynamic(() => import('@/components/editor/Toolbar'), { ssr: fals
 const CanvasEditor = dynamic(() => import('@/components/editor/Canvas'), { ssr: false });
 const PageStrip = dynamic(() => import('@/components/editor/PageStrip'), { ssr: false });
 const BottomToolbar = dynamic(() => import('@/components/editor/BottomToolbar'), { ssr: false });
+const SelectionContextBar = dynamic(() => import('@/components/editor/SelectionContextBar'), { ssr: false });
 const PropertiesPanel = dynamic(() => import('@/components/editor/PropertiesPanel'), { ssr: false });
 const SignaturePad = dynamic(() => import('@/components/tools/SignaturePad'), { ssr: false });
 const ImageStamp = dynamic(() => import('@/components/tools/ImageStamp'), { ssr: false });
@@ -46,6 +49,8 @@ export default function EditorPage() {
   const propertiesPanelOpen = useUIStore((s) => s.propertiesPanelOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const viewMode = useUIStore((s) => s.viewMode);
+  const activeSheet = useUIStore((s) => s.activeSheet);
+  const setActiveSheet = useUIStore((s) => s.setActiveSheet);
 
   const addToast = useToastStore((s) => s.addToast);
 
@@ -272,8 +277,8 @@ export default function EditorPage() {
 
   if (!pdfBytes) return null;
 
-  const showSignaturePanel = ['signature-draw', 'signature-type', 'signature-upload'].includes(activeTool);
-  const showImagePanel = activeTool === 'image-stamp' || activeTool === 'bg-remove';
+  const showSignaturePanel = SIGNATURE_TOOLS.includes(activeTool);
+  const showImagePanel = IMAGE_TOOLS.includes(activeTool);
   const showRightPanel = propertiesPanelOpen;
 
   return (
@@ -316,18 +321,23 @@ export default function EditorPage() {
             <PageStrip />
           </div>
           {viewMode === 'scroll' && <ScrollView />}
-          {/* Phone-only bottom navigation (undo/redo + tool sheets) */}
+          {/* Phone-only chrome: selection actions above the bottom navigation */}
+          <SelectionContextBar />
           <BottomToolbar onUndo={handleUndo} onRedo={handleRedo} />
         </div>
 
         {/* Right Panel — hidden on mobile unless propertiesPanelOpen.
-            Not shown in scroll mode (read-only preview has no properties). */}
+            Not shown in scroll mode (read-only preview has no properties).
+            On phones the signature/image overlay stops above the bottom
+            navigation, otherwise it covered the tool slots and the only way
+            out of the tool was the leftmost buttons. */}
         {showRightPanel && viewMode === 'edit' && (
           <>
             {showSignaturePanel ? (
               <div className="
                 fixed md:relative z-30 md:z-auto
-                right-0 top-12 md:top-auto bottom-0
+                right-0 top-12 md:top-auto
+                bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0
                 w-[280px] bg-[#1E293B] border-l border-white/5 overflow-y-auto shrink-0
               ">
                 <SignaturePad onPlace={handleSignaturePlace} />
@@ -335,7 +345,8 @@ export default function EditorPage() {
             ) : showImagePanel ? (
               <div className="
                 fixed md:relative z-30 md:z-auto
-                right-0 top-12 md:top-auto bottom-0
+                right-0 top-12 md:top-auto
+                bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0
                 w-[280px] bg-[#1E293B] border-l border-white/5 overflow-y-auto shrink-0
               ">
                 <ImageStamp onPlace={handleImagePlace} />
@@ -351,6 +362,22 @@ export default function EditorPage() {
           </>
         )}
       </div>
+
+      {/* Phone-only properties/file-tools bottom sheet. Desktop keeps the
+          fixed right panel above; PropertiesPanel content is shared. */}
+      <Sheet
+        open={activeSheet === 'properties' && viewMode === 'edit' && hasPropertiesContent(activeTool)}
+        onOpenChange={(open) => setActiveSheet(open ? 'properties' : null)}
+      >
+        <SheetContent
+          side="bottom"
+          className="md:hidden rounded-t-2xl border-none bg-[#1E293B] p-0 pb-[env(safe-area-inset-bottom)] max-h-[70dvh] overflow-y-auto"
+        >
+          {/* Title required by base-ui dialog a11y; visually the panel has its own heading */}
+          <SheetTitle className="sr-only">Tool properties</SheetTitle>
+          <PropertiesPanel variant="sheet" />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -234,6 +234,8 @@ export default function SignaturePad({ onPlace }: SignaturePadProps) {
                 <button
                   key={color}
                   onClick={() => setPenColor(color)}
+                  aria-label={`Pen color ${color}`}
+                  aria-pressed={penColor === color}
                   className={`w-6 h-6 rounded-full border-2 transition-all ${penColor === color ? 'border-[#DC2626] scale-110' : 'border-white/10'}`}
                   style={{ backgroundColor: color }}
                 />
@@ -323,6 +325,8 @@ export default function SignaturePad({ onPlace }: SignaturePadProps) {
                 <button
                   key={color}
                   onClick={() => setPenColor(color)}
+                  aria-label={`Pen color ${color}`}
+                  aria-pressed={penColor === color}
                   className={`w-6 h-6 rounded-full border-2 transition-all ${penColor === color ? 'border-[#DC2626] scale-110' : 'border-white/10'}`}
                   style={{ backgroundColor: color }}
                 />

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ActiveTool, TextAnnotationOptions, DrawingOptions, ShapeOptions } from '@/types';
+import type { ActiveTool, TextAnnotationOptions, DrawingOptions, ShapeOptions, HighlightOptions } from '@/types';
 
 interface EditorState {
   activeTool: ActiveTool;
@@ -9,6 +9,7 @@ interface EditorState {
   textOptions: TextAnnotationOptions;
   drawingOptions: DrawingOptions;
   shapeOptions: ShapeOptions;
+  highlightOptions: HighlightOptions;
   signatureDataUrl: string | null;
   imageDataUrl: string | null;
 
@@ -19,6 +20,7 @@ interface EditorState {
   setTextOptions: (options: Partial<TextAnnotationOptions>) => void;
   setDrawingOptions: (options: Partial<DrawingOptions>) => void;
   setShapeOptions: (options: Partial<ShapeOptions>) => void;
+  setHighlightOptions: (options: Partial<HighlightOptions>) => void;
   setSignatureDataUrl: (url: string | null) => void;
   setImageDataUrl: (url: string | null) => void;
 }
@@ -57,6 +59,13 @@ export const useEditorStore = create<EditorState>((set) => ({
     opacity: 1,
   },
 
+  // Defaults match createHighlight()'s own fallbacks, so behavior is unchanged
+  // until the user touches a control.
+  highlightOptions: {
+    color: '#FBBF24',
+    opacity: 0.3,
+  },
+
   setActiveTool: (tool) => set({ activeTool: tool }),
   setSelectedElement: (id) => set({ selectedElementId: id }),
   setCurrentPage: (index) => set({ currentPageIndex: index }),
@@ -67,6 +76,8 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => ({ drawingOptions: { ...state.drawingOptions, ...options } })),
   setShapeOptions: (options) =>
     set((state) => ({ shapeOptions: { ...state.shapeOptions, ...options } })),
+  setHighlightOptions: (options) =>
+    set((state) => ({ highlightOptions: { ...state.highlightOptions, ...options } })),
   setSignatureDataUrl: (url) => set({ signatureDataUrl: url }),
   setImageDataUrl: (url) => set({ imageDataUrl: url }),
 }));

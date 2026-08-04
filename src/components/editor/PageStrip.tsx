@@ -29,7 +29,10 @@ export default function PageStrip() {
     try {
       const result = await deletePages(pdfBytes, [pageIdx]);
       downloadPDF(result, `${fileName?.replace('.pdf', '') || 'document'}-page-removed.pdf`);
-      addToast({ type: 'success', message: `Page ${pageIdx + 1} removed. Downloaded updated PDF.` });
+      addToast({
+        type: 'success',
+        message: `Downloaded a copy without page ${pageIdx + 1}. The open document is unchanged.`,
+      });
     } catch {
       addToast({ type: 'error', message: 'Failed to delete page.' });
     }
@@ -93,7 +96,8 @@ export default function PageStrip() {
                       handleDeletePage(index);
                     }}
                     className="absolute top-0.5 right-0.5 w-5 h-5 pointer-coarse:w-7 pointer-coarse:h-7 bg-[#DC2626] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 transition-opacity hover:bg-[#B91C1C] z-10"
-                    aria-label={`Delete page ${index + 1}`}
+                    title={`Download a copy without page ${index + 1}`}
+                    aria-label={`Download a copy without page ${index + 1}`}
                   >
                     <Trash2 className="w-2.5 h-2.5 pointer-coarse:w-3.5 pointer-coarse:h-3.5 text-white" />
                   </button>

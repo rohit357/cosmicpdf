@@ -19,9 +19,40 @@ Data flow: upload → bytes in pdfStore → pdfjs renders all pages to PNG data 
 
 # Current Phase
 
-Mobile UX roadmap (approved plan: M0–M4). **Phase M1 (mobile chrome) COMPLETE**, awaiting user review/commit. M0 committed (`2f22cc6`).
+Mobile UX roadmap (approved plan: M0–M4) + **M2.5 (correctness & UX consistency)**, an audit-driven interstitial phase. **M2 and M2.5 both COMPLETE**, awaiting user review/commit (one working tree, not yet committed). M0 (`2f22cc6`) + M1 (`341d17c`) committed.
 
 # Completed
+
+Phase M2.5 (correctness & consistency) — backlog came from the mobile UX audit; **not a feature phase**:
+1. **Dead controls wired.**
+   - Pen opacity: `enableDrawingMode` ignored `drawingOptions.opacity`, so the slider *and* its live preview were no-ops. Fabric brushes have no opacity property, so the alpha now travels with the colour — new `fabricManager.withAlpha(hex, alpha)` → `rgba()`; `>= 1` returns the colour untouched, so default behavior is byte-identical.
+   - Highlight: the panel rendered *text* properties (font family/size/bold/italic) and `createHighlight(x, y)` was called with no options — every control was disconnected. Highlight now has its own colour + opacity block backed by `editorStore.highlightOptions` (defaults `#FBBF24` / `0.3` = `createHighlight`'s own fallbacks, so unchanged until touched). Own marker palette; `renderTextProperties` no longer serves two tools.
+2. **State sync.** Delete/Backspace with nothing selected still called `saveState()`, pushing a snapshot identical to the previous one — the next undo then appeared to do nothing. Now returns early when there is no active object. Also `discardActiveObject()` when switching to a draw/place/erase tool (selection handles vanish with `selectable=false`, but fabric still reported an active object, leaving the mobile selection bar acting on something invisible), and `syncSelection` reads back from `canvas.getActiveObject()` rather than the event payload (`selection:updated` fires with an empty `selected` array when a member leaves a multi-selection).
+3. **Empty-sheet prevention** (single source of truth: `lib/editor/toolPanels.ts` — `SIGNATURE_TOOLS` / `IMAGE_TOOLS` / `OVERLAY_PANEL_TOOLS` / `FILE_PANEL_TOOLS` / `hasPropertiesContent`; these lists were duplicated across three components and had drifted). The phone properties sheet, its top-bar button and `PropertiesPanel` all gate on the same predicate, so signature/image tools can no longer open an empty sheet.
+4. **Scroll-mode dead controls.** The top-bar properties button is hidden in scroll mode (its sheet only opens in edit mode → tap did nothing), and the view toggle clears `activeSheet` (a sheet left open in edit mode popped back on return).
+5. **Misleading copy.** Reorder said "Drag pages to reorder" but only chevrons exist → "Move pages with the arrows". PageStrip's per-page red trash button downloads a *copy* without that page and leaves the document untouched; label/title/toast now say exactly that (the real fix — deleting in place — stays Phase 4).
+6. **Touch-context copy** in the sheet variant only (desktop untouched): "Tap" vs "Click", Delete-key tips → selection-bar wording, keyboard-shortcut table omitted, "from the sidebar" → "from the bar below".
+7. **A11y on touched code.** Accessible names + `aria-pressed` on every colour swatch (text/brush/highlight/shape/signature — screen readers previously heard "button" ten times), labels on the raw `<input type="color">` pickers, labels on reorder chevrons and delete-page grid cells, and `pointer-coarse` sizing for the reorder chevrons (~20px → 44px) and top-bar icon buttons.
+
+Design decisions (M2.5):
+- Highlight got a real store slice rather than deleting the controls: `createHighlight` already accepted `color`/`opacity`, so wiring was smaller than removal and keeps the tool useful. `HighlightOptions` follows the existing `textOptions`/`drawingOptions`/`shapeOptions` pattern — no new architecture.
+- Brush alpha via `rgba()` colour, not a post-hoc `path.opacity`: the stroke renders semi-transparent *while drawing*, and the alpha serializes with the path (export/undo unaffected).
+- PageStrip delete keeps its trash icon; only the wording was corrected. Swapping the icon is a visual redesign and the behavior itself is Phase 4 work.
+- **Validated on a real canvas** (throwaway node harness against `fabric/node` 7.2.0, deleted after the run): `duplicateSelectedObject` — 18/18 checks. Single object: +16/+16 offset, original unmoved, copy active. `ActiveSelection`: 2 → 4 objects, copies (not originals) added, active object is a fresh `ActiveSelection` holding the 2 copies, offsets correct, `toJSON` round-trips all 4. Empty selection returns `false` and mutates nothing. The fabric v7 recipe in use (set `clone.canvas`, add members individually, `setCoords()`) is confirmed correct.
+- Deliberately NOT done (out of "no redesign / no new features"): unifying the white tool sheets with the dark properties sheet, a close button on the signature/image overlay (the overlay now stops above the bottom nav, so the tool bar is reachable), and the pdf-to-img multi-download behavior on mobile browsers.
+
+Phase M2 (selection context bar + properties sheet) — phone-only chrome, desktop untouched:
+1. M2.1 `fabricManager.duplicateSelectedObject`: clone + 16px offset, `ActiveSelection`-aware (members added individually), returns bool. `Canvas.tsx`: added `selection:updated` listener (was only created/cleared — switching selection left stale state); init effect now calls `setSelectedElement(null)` after disposing old canvas (dispose drops listeners, `selection:cleared` never fires).
+2. M2.1 `SelectionContextBar.tsx` (new, `md:hidden`): Delete · Duplicate · Done, docked between canvas and BottomToolbar, driven by `editorStore.selectedElementId`. Actions use canvasRegistry + existing helpers; save via same `updateCanvasState`+`pushSnapshot` path. Hidden in scroll mode. **Fixes critical P1 (no touch delete).**
+   - **Style action CUT**: PropertiesPanel edits tool defaults, not selected object (same on desktop). Live object styling = new feature, not re-housing → deferred; no dead button shipped.
+3. M2.2 `uiStore.ActiveSheet` += `'properties'`. `PropertiesPanel` gains `variant: 'panel' (default) | 'sheet'` — sheet variant renders same content minus fixed-width aside; desktop markup byte-identical. `editor/page.tsx` hosts phone-only bottom Sheet (`md:hidden`, `max-h-[70dvh]`, dark theme, sr-only title for base-ui a11y) with `<PropertiesPanel variant="sheet"/>`.
+4. M2.2 wiring: BottomToolbar file/convert/optimize tool tap → `setActiveSheet('properties')` (panel IS those tools' UI — tap otherwise did nothing visible). Toolbar mobile PanelRightOpen button → opens properties sheet (was `togglePropertiesPanel`, which only affected the desktop-hidden panel — dead on phones).
+
+Design decisions (M2):
+- Context bar docked (not floating near selection): zero positioning math, no collision with fabric handles (plan D4).
+- Duplicate offsets 16px so copy is visibly distinct; multi-select duplicates via ActiveSelection member iteration (fabric v7 clone of ActiveSelection isn't auto-added).
+- `togglePropertiesPanel` left in uiStore (API kept, now unused) — removal is churn.
+- Signature/Image tools on phones keep existing fixed overlay panels (SignaturePad/ImageStamp) — they already work at <md; re-housing them is not in plan scope.
 
 Phase M1 (mobile chrome) — bottom navigation + sheets, phone-only:
 1. M1.1 `uiStore`: `activeSheet: 'draw' | 'shapes' | 'more' | null` + `setActiveSheet`. Single field → at most one sheet open; desktop ignores it.
@@ -100,9 +131,8 @@ Phase 1 (all tasks):
 # Remaining
 
 - Mobile UX plan (approved; see `C:\Users\Admin\.claude\plans\anlayse-the-codebase-important-bubbly-treasure.md`):
-  - M2 — selection context bar (fixes critical P1: no touch path to delete object) + properties bottom sheet
-  - M3 — pinch focal anchoring, two-finger pan in select mode, keyboard/visualViewport text-editing handling, landscape slim chrome
-  - M4 — page-grid virtualization (if needed), haptics, z-order buttons
+  - M3 — pinch focal anchoring, two-finger pan in select mode, keyboard/visualViewport text-editing handling, landscape slim chrome. Audit additions folded in here (all gesture-layer work, deliberately kept out of M2.5): double-tap zoom fires even when the tap lands on an IText, so it zooms *and* enters text editing — guard on the hit target; a pinch started with the pen tool active lays a stray stroke with the first finger; and `transformOrigin: 'top center'` means transform overflow only extends right/bottom, so the left edge of a zoomed page cannot be scrolled to (same scroll math as focal anchoring — fix together)
+  - M4 — page-grid virtualization (if needed), haptics, z-order buttons, live object styling (Style action cut from M2), sheet theme unification
 - Phase 4 — feature fixes: undo/redo off-by-one, PageStrip delete updates state (not download), inflatePDF rewrite, offscreen export canvas
 - Phase 5 — additions: page-numbers tool, export quality option
 
@@ -125,7 +155,9 @@ Phase 1 (all tasks):
 - Memory: pages still all held at scale-2 in zustand (now blob URLs, ~33% smaller than base64, but still full doc in memory) — true windowing/lazy eviction not done (would need bigger refactor; out of Phase 2 minimal scope)
 - Export rasterizes pages → text layer lost, quality capped at render scale (accepted limitation of canvas-composite export design)
 - Undo restores pushed snapshot, not prior state — first-edit undo broken (Phase 4)
-- PageStrip per-thumbnail delete downloads new PDF instead of updating editor (Phase 4)
+- PageStrip per-thumbnail delete downloads new PDF instead of updating editor (Phase 4; M2.5 corrected the label/toast so the control no longer misrepresents itself)
+- `pdf-to-img` fires one programmatic download per page — mobile browsers commonly block all but the first (needs a zip or single-file strategy; left alone in M2.5 as it is behavior change, not a copy fix)
+- Mobile sheet theming is split: tool sheets are light, the properties sheet is dark. Unifying is a visual redesign — queued as M4 polish
 - `inflatePDF` padding approach unreliable (zeros after IEND) (Phase 4)
 - Canvas overlay touch: RESOLVED in Phase 3 (pointer events + touch-action + pinch-zoom)
 - `compressPDF` / `pdf-to-img` still re-parse the doc per operation — independent one-shot flows, left as-is (low value, higher risk than editor render path)
@@ -141,7 +173,9 @@ Phase 1 (all tasks):
 - Post-Phase-3: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-M0: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-M1: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
+- Post-M2: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
+- Post-M2.5: build ✓ (12 static pages, TS pass), `eslint src` 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, clean dev log; `duplicateSelectedObject` validated against real fabric 7.2.0 (18/18 checks, single + ActiveSelection + empty). NOTE: `npm run lint` also covers the repo root and reports 8 errors / 1441 warnings — all from the vendored `public/pdf.worker.min.mjs` and the `refactor.js` dev script, both pre-existing and untouched. `eslint src` is the project's real signal.
 
 # Next Session
 
-M1 done, not yet committed. If resuming: check `git status` — uncommitted changes mean user hasn't committed; do NOT start M2 without explicit approval. Next work = **M2**: selection context bar (Delete/Duplicate/Style/Done on fabric `selection:created/updated`, docked above BottomToolbar — fixes critical P1) + PropertiesPanel/FileToolsPanel re-housed in bottom sheet on phones.
+M2 + M2.5 done, not yet committed (one working tree). If resuming: check `git status` — uncommitted changes mean the user hasn't committed; do NOT start M3 without explicit approval. Next work = **M3 (gesture & input polish)**: pinch focal anchoring (isolate + device-test), left/top transform-overflow clipping (same scroll math), two-finger pan in select mode, double-tap guard when the tap hits a fabric object, pinch-suppression while a draw tool is active, `visualViewport` keyboard handling on `text:editing:entered`, landscape slim chrome. Device testing is required for this phase — emulation cannot be trusted for pinch or the on-screen keyboard.

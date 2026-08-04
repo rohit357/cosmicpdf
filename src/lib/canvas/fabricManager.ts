@@ -95,13 +95,31 @@ export async function setCanvasBackground(
 }
 
 /**
+ * Apply an alpha channel to a `#rrggbb` colour, returning an `rgba()` string.
+ * Fabric brushes have no opacity property, so the alpha has to travel with the
+ * colour for the stroke to be drawn (and serialized) semi-transparent.
+ * Non-hex input is returned untouched — it already carries its own alpha.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  if (alpha >= 1) return color;
+  const match = /^#([0-9a-f]{6})$/i.exec(color.trim());
+  if (!match) return color;
+  const value = parseInt(match[1], 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, alpha)})`;
+}
+
+/**
  * Enable freehand drawing mode on the canvas
  */
 export async function enableDrawingMode(
   canvas: FabricCanvas,
   color: string = '#0F172A',
   width: number = 2,
-  brushType: 'pencil' | 'spray' | 'circle' = 'pencil'
+  brushType: 'pencil' | 'spray' | 'circle' = 'pencil',
+  opacity: number = 1
 ): Promise<void> {
   const fabric = await getFabric();
   canvas.isDrawingMode = true;
@@ -121,7 +139,7 @@ export async function enableDrawingMode(
       break;
   }
 
-  brush.color = color;
+  brush.color = withAlpha(color, opacity);
   brush.width = width;
   canvas.freeDrawingBrush = brush;
 }
@@ -205,4 +223,35 @@ export function deleteSelectedObject(canvas: FabricCanvas): void {
     canvas.discardActiveObject();
     canvas.requestRenderAll();
   }
+}
+
+/**
+ * Duplicate the selected object (or multi-selection) with a small offset and
+ * make the copy the active object. Returns true if something was duplicated.
+ */
+export async function duplicateSelectedObject(canvas: FabricCanvas): Promise<boolean> {
+  const activeObject = canvas.getActiveObject();
+  if (!activeObject) return false;
+
+  const fabric = await getFabric();
+  const clone = await activeObject.clone();
+  canvas.discardActiveObject();
+
+  clone.set({
+    left: (clone.left ?? 0) + 16,
+    top: (clone.top ?? 0) + 16,
+  });
+
+  if (clone instanceof fabric.ActiveSelection) {
+    // Multi-selection clones need their members added individually.
+    clone.canvas = canvas;
+    clone.forEachObject((obj) => canvas.add(obj));
+    clone.setCoords();
+  } else {
+    canvas.add(clone);
+  }
+
+  canvas.setActiveObject(clone);
+  canvas.requestRenderAll();
+  return true;
 }

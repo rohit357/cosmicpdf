@@ -13,7 +13,7 @@ export type ViewMode = 'edit' | 'scroll';
  * sheet is open at a time — opening one implicitly closes the rest.
  * Desktop layout ignores this entirely.
  */
-export type ActiveSheet = 'draw' | 'shapes' | 'more' | null;
+export type ActiveSheet = 'draw' | 'shapes' | 'more' | 'properties' | null;
 
 interface UIState {
   sidebarOpen: boolean;

@@ -210,14 +210,14 @@ export default function FileToolsPanel() {
     case 'reorder':
       return (
         <div className="space-y-4">
-          <p className="text-sm text-[#94A3B8]">Drag pages to reorder, then apply.</p>
+          <p className="text-sm text-[#94A3B8]">Move pages with the arrows, then apply.</p>
           <div className="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar">
             {pageOrder.map((originalIdx, currentPos) => (
               <div
                 key={`page-${originalIdx}`}
                 className="flex items-center gap-2 bg-[#0F172A] rounded-lg px-3 py-2 border border-white/5"
               >
-                <ArrowUpDown className="w-3 h-3 text-[#475569] shrink-0" />
+                <ArrowUpDown className="w-3 h-3 text-[#475569] shrink-0" aria-hidden="true" />
                 {pages[originalIdx]?.thumbnailDataUrl && (
                   <img
                     src={pages[originalIdx].thumbnailDataUrl}
@@ -230,16 +230,18 @@ export default function FileToolsPanel() {
                   <button
                     onClick={() => movePageInOrder(currentPos, 'up')}
                     disabled={currentPos === 0}
-                    className="p-1 text-[#64748B] hover:text-white disabled:opacity-30"
+                    aria-label={`Move page ${originalIdx + 1} up`}
+                    className="p-1 pointer-coarse:p-2.5 text-[#64748B] hover:text-white disabled:opacity-30"
                   >
-                    <ChevronUp className="w-3 h-3" />
+                    <ChevronUp className="w-3 h-3 pointer-coarse:w-4 pointer-coarse:h-4" />
                   </button>
                   <button
                     onClick={() => movePageInOrder(currentPos, 'down')}
                     disabled={currentPos === pageOrder.length - 1}
-                    className="p-1 text-[#64748B] hover:text-white disabled:opacity-30"
+                    aria-label={`Move page ${originalIdx + 1} down`}
+                    className="p-1 pointer-coarse:p-2.5 text-[#64748B] hover:text-white disabled:opacity-30"
                   >
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-3 h-3 pointer-coarse:w-4 pointer-coarse:h-4" />
                   </button>
                 </div>
               </div>
@@ -265,6 +267,8 @@ export default function FileToolsPanel() {
               <button
                 key={i}
                 onClick={() => toggleDeletePage(i)}
+                aria-label={`Page ${i + 1}`}
+                aria-pressed={selectedForDelete.has(i)}
                 className={`relative rounded-lg border-2 transition-all overflow-hidden ${
                   selectedForDelete.has(i)
                     ? 'border-[#DC2626] bg-[#DC2626]/10'
