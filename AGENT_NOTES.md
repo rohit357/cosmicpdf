@@ -148,6 +148,7 @@ Phase 1 (all tasks):
 - canvasRegistry uses module-scoped variable, not zustand — non-serializable fabric instance, no reactivity needed
 - Kept `/* eslint-disable @next/next/no-img-element */` pattern (already used in PageStrip/FileToolsPanel) rather than next/image: data-URL previews gain nothing from optimization
 - `refactor.js` at repo root is a dev script, untouched
+- `next.config.ts` exports the **function form** (`(phase) => NextConfig`, `PHASE_DEVELOPMENT_SERVER` from `next/constants`) so `allowedDevOrigins` exists only in the dev-server phase. Needed for M3 device testing: Next blocks cross-origin requests to dev-only endpoints (`/_next/*`, HMR socket), so a phone hitting `http://<lan-ip>:3000` gets 403s on assets unless its origin is allowed. The LAN IPv4s are read from `os.networkInterfaces()` at config load instead of hardcoded — the two addresses previously pinned there (`192.168.223.129`, `10.47.232.129`) had both gone stale, and the failure mode is a silent 403 on assets. `NEXT_DEV_ORIGINS` (comma-separated) adds tunnel/mDNS hosts. Matching is exact or per-dot-segment wildcard compared right-to-left: `192.168.1.*` matches `192.168.1.57`, `192.168.*` does not; ports are ignored. Verified: LAN origin → 200, foreign origin → 403, production build unaffected.
 
 # Known Issues
 
