@@ -176,7 +176,46 @@ Phase 1 (all tasks):
 - Post-M1: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-M2: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-M2.5: build ✓ (12 static pages, TS pass), `eslint src` 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, clean dev log; `duplicateSelectedObject` validated against real fabric 7.2.0 (18/18 checks, single + ActiveSelection + empty). NOTE: `npm run lint` also covers the repo root and reports 8 errors / 1441 warnings — all from the vendored `public/pdf.worker.min.mjs` and the `refactor.js` dev script, both pre-existing and untouched. `eslint src` is the project's real signal.
+- Post-M2.6 Phase 1: build ✓ (12 static pages, TS pass), smoke test `/` + `/editor` → 200. ESLint check in progress.
+
+# Current Phase
+
+**M2.6 Real-Device Stabilization (in progress)** — fixing critical mobile issues found in real device testing after M2.5.
+
+## M2.6 Phase 1 (COMPLETE)
+
+**Root causes fixed:**
+1. **Viewport unit mismatch** — root container used `h-screen` (100vh), which includes browser chrome space on mobile. Bottom UI (156px + safe-area) pushed below visible viewport when address bar present. Mobile Chrome: 100vh ≈ 100px taller than actual visible viewport.
+2. **PageStrip missing mobile safe-area** — safe-area padding gated behind `md:` breakpoint. Mobile PageStrip had no bottom padding while BottomToolbar correctly added safe-area, creating unexpected 20-34px extra space.
+
+**Changes:**
+- `src/app/editor/page.tsx:285` — `h-screen` → `h-dvh` (dynamic viewport height)
+- `src/components/editor/PageStrip.tsx:42` — removed `md:` prefix from `pb-[env(safe-area-inset-bottom)]`, now applies unconditionally
+
+**Impact:** Bottom toolbar + PageStrip now fully visible on mobile devices. Container uses actual visible viewport instead of layout viewport that includes browser chrome.
+
+**Validation:** Build ✓, TypeScript ✓, smoke test ✓ (home + editor both 200). ESLint running in background.
+
+## M2.6 Initial Zoom Issue (IDENTIFIED, NOT YET FIXED)
+
+**Root cause found:** Auto-fit calculation in `page.tsx:95-105` has hardcoded assumption bug:
+- Line 99: `const propsW = window.innerWidth >= 768 ? 250 : 0;`
+- **Problem:** Assumes properties panel always open on desktop
+- **Reality:** Panel controlled by `propertiesPanelOpen` state, often closed on initial load
+- **Result:** Calculation subtracts 250px that isn't used → zoom too small (25% instead of fit-to-width)
+- **Additional:** Hardcoded `padding = 64` doesn't match actual padding (`p-2` = 16px mobile, `p-8` = 64px desktop from Canvas.tsx:638)
+
+**Fix deferred:** Belongs in Phase 1.5 or separate investigation — needs panel state check or post-render calculation.
+
+## M2.6 Remaining Work
+
+**Phase 2:** Transform origin + scroll clipping (RC-3)  
+**Phase 3:** Pinch focal anchoring (RC-4)  
+**Phase 4:** Text editing + visualViewport (RC-5, RC-6)  
+**Phase 5:** Polish (RC-7, RC-8, RC-9)
+
+See M2.6 plan: `C:\Users\Admin\.claude\jobs\1869361d\tmp\M2.6_PLAN.md`
 
 # Next Session
 
-M2 + M2.5 done, not yet committed (one working tree). If resuming: check `git status` — uncommitted changes mean the user hasn't committed; do NOT start M3 without explicit approval. Next work = **M3 (gesture & input polish)**: pinch focal anchoring (isolate + device-test), left/top transform-overflow clipping (same scroll math), two-finger pan in select mode, double-tap guard when the tap hits a fabric object, pinch-suppression while a draw tool is active, `visualViewport` keyboard handling on `text:editing:entered`, landscape slim chrome. Device testing is required for this phase — emulation cannot be trusted for pinch or the on-screen keyboard.
+M2.6 Phase 1 complete, awaiting approval for Phase 2+. If resuming: check `git status` — uncommitted changes mean Phase 1 not committed yet. After M2.6 complete → **M3 (gesture & input polish)**: pinch focal anchoring (overlaps with M2.6 Phase 3), two-finger pan in select mode, double-tap guard when tap hits fabric object, pinch-suppression while draw tool active, `visualViewport` keyboard handling on `text:editing:entered`, landscape slim chrome. Device testing required — emulation cannot be trusted for pinch or on-screen keyboard.

@@ -39,7 +39,7 @@ export default function PageStrip() {
   };
 
   return (
-    <div className="h-[100px] bg-white border-t border-[#E2E8F0] flex items-center shrink-0 md:pb-[env(safe-area-inset-bottom)]">
+    <div className="h-[100px] bg-white border-t border-[#E2E8F0] flex items-center shrink-0 pb-[env(safe-area-inset-bottom)]">
       {/* Page navigation */}
       <Button
         variant="ghost"

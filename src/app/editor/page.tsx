@@ -282,7 +282,7 @@ export default function EditorPage() {
   const showRightPanel = propertiesPanelOpen;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-dvh flex flex-col overflow-hidden">
       <ToastContainer />
 
       {/* Export loading overlay */}
