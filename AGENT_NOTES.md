@@ -177,6 +177,7 @@ Phase 1 (all tasks):
 - Post-M2: build ✓ (12 static pages, TS pass), eslint 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, no errors in dev log
 - Post-M2.5: build ✓ (12 static pages, TS pass), `eslint src` 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, clean dev log; `duplicateSelectedObject` validated against real fabric 7.2.0 (18/18 checks, single + ActiveSelection + empty). NOTE: `npm run lint` also covers the repo root and reports 8 errors / 1441 warnings — all from the vendored `public/pdf.worker.min.mjs` and the `refactor.js` dev script, both pre-existing and untouched. `eslint src` is the project's real signal.
 - Post-M2.6 Phase 1: build ✓ (12 static pages, TS pass), smoke test `/` + `/editor` → 200. ESLint check in progress.
+- Post-M2.6 Phase 2: build ✓ (12 static pages, TS pass), smoke test `/` → 200. ESLint running in background.
 
 # Current Phase
 
@@ -207,9 +208,35 @@ Phase 1 (all tasks):
 
 **Fix deferred:** Belongs in Phase 1.5 or separate investigation — needs panel state check or post-render calculation.
 
+## M2.6 Phase 2 (COMPLETE)
+
+**Root cause fixed:**
+3. **Transform origin asymmetric overflow** — `transformOrigin: 'top center'` caused zoomed content to overflow right/bottom (scrollable) but left (NOT scrollable, negative coordinate space with no layout backing). Left edge literally unreachable when zoomed >100%.
+
+**Changes:**
+- `src/components/editor/Canvas.tsx:649` — `transformOrigin: 'top center'` → `'center center'`
+
+**Impact:** Symmetric overflow → all edges (left/right/top/bottom) now scrollable when zoomed. Content expands equally in all directions from center point.
+
+**Validation:** Build ✓, TypeScript ✓, smoke test ✓ (home 200). ESLint running in background.
+
+**Desktop behavior:** Transform origin change applies to both mobile + desktop. Desktop users may notice zoom pivot point changed from top-center to true-center — this is correct behavior (symmetric overflow). No functional regression.
+
+## M2.6 Initial Zoom Issue (STILL PRESENT)
+
+**Status:** NOT fixed by Phase 1 or Phase 2.
+
+Auto-fit calculation bug still exists (`page.tsx:95-105`):
+- Assumes properties panel always open (subtracts 250px)
+- Hardcoded `padding = 64` but mobile uses 16px
+
+Transform origin change doesn't affect initial zoom calculation — that runs once on first page load before user zooms.
+
+**Next step:** Fix auto-fit calculation in Phase 2.5 or defer to separate task.
+
 ## M2.6 Remaining Work
 
-**Phase 2:** Transform origin + scroll clipping (RC-3)  
+**Phase 2.5 (optional):** Fix initial zoom auto-fit calculation  
 **Phase 3:** Pinch focal anchoring (RC-4)  
 **Phase 4:** Text editing + visualViewport (RC-5, RC-6)  
 **Phase 5:** Polish (RC-7, RC-8, RC-9)

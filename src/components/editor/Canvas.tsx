@@ -646,7 +646,7 @@ export default function CanvasEditor({ canvasRef }: CanvasEditorProps) {
         className="relative shadow-2xl"
         style={{
           transform: `scale(${zoom})`,
-          transformOrigin: 'top center',
+          transformOrigin: 'center center',
         }}
       >
         <canvas ref={canvasElRef} />
