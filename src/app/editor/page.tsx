@@ -94,10 +94,11 @@ export default function EditorPage() {
 
             // Auto-fit zoom once, based on the first page width.
             if (page.pageIndex === 0) {
-              // Available width = viewport - sidebar(220) - properties(250) - padding(64) - scrollbar(16)
-              const sidebarW = window.innerWidth >= 768 ? 220 : 0;
-              const propsW = window.innerWidth >= 768 ? 250 : 0;
-              const padding = 64;
+              // Calculate available width = viewport - sidebar - properties panel (if open) - padding
+              const isMobile = window.innerWidth < 768;
+              const sidebarW = isMobile ? 0 : 220; // sidebar hidden on mobile (M1)
+              const propsW = useUIStore.getState().propertiesPanelOpen ? 250 : 0; // check actual state
+              const padding = isMobile ? 16 : 64; // p-2 (8×2) mobile, md:p-8 (32×2) desktop
               const available = window.innerWidth - sidebarW - propsW - padding;
               const fitZoom = Math.min(available / page.width, 1); // never exceed 100%
               const clampedZoom = Math.max(0.3, Math.min(1, fitZoom));

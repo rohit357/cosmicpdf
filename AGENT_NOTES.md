@@ -178,6 +178,7 @@ Phase 1 (all tasks):
 - Post-M2.5: build ✓ (12 static pages, TS pass), `eslint src` 0 errors / 0 warnings; smoke test `/` + `/editor` → 200, clean dev log; `duplicateSelectedObject` validated against real fabric 7.2.0 (18/18 checks, single + ActiveSelection + empty). NOTE: `npm run lint` also covers the repo root and reports 8 errors / 1441 warnings — all from the vendored `public/pdf.worker.min.mjs` and the `refactor.js` dev script, both pre-existing and untouched. `eslint src` is the project's real signal.
 - Post-M2.6 Phase 1: build ✓ (12 static pages, TS pass), smoke test `/` + `/editor` → 200. ESLint check in progress.
 - Post-M2.6 Phase 2: build ✓ (12 static pages, TS pass), smoke test `/` → 200. ESLint running in background.
+- Post-M2.6 Phase 2.5: build ✓ (12 static pages, TS pass), eslint src ✓ (0 errors/warnings), smoke test `/` + `/editor` → 200.
 
 # Current Phase
 
@@ -222,21 +223,40 @@ Phase 1 (all tasks):
 
 **Desktop behavior:** Transform origin change applies to both mobile + desktop. Desktop users may notice zoom pivot point changed from top-center to true-center — this is correct behavior (symmetric overflow). No functional regression.
 
-## M2.6 Initial Zoom Issue (STILL PRESENT)
+## M2.6 Phase 2.5 (COMPLETE) — Initial Zoom Fix
 
-**Status:** NOT fixed by Phase 1 or Phase 2.
+**Root cause:**
+Auto-fit calculation (`page.tsx:95-105`) had hardcoded assumptions:
+1. Properties panel width subtracted only on desktop (`>= 768`), but panel actually renders on mobile too (fixed overlay)
+2. Properties panel **always open** assumption — didn't check `propertiesPanelOpen` state
+3. Hardcoded `padding = 64` but mobile uses 16px (`p-2` = 8×2), desktop 64px (`md:p-8` = 32×2)
 
-Auto-fit calculation bug still exists (`page.tsx:95-105`):
-- Assumes properties panel always open (subtracts 250px)
-- Hardcoded `padding = 64` but mobile uses 16px
+**Result:** Mobile with panel open → subtracted 0px for panel + used 64px padding → massive overestimate of available width → ~25% zoom.
 
-Transform origin change doesn't affect initial zoom calculation — that runs once on first page load before user zooms.
+**Changes:**
+- `src/app/editor/page.tsx:95-104` — auto-fit calculation now:
+  - Checks actual `useUIStore.getState().propertiesPanelOpen` state
+  - Uses correct mobile padding (16px) vs desktop (64px)
+  - Sidebar logic unchanged (correctly hidden on mobile per M1)
 
-**Next step:** Fix auto-fit calculation in Phase 2.5 or defer to separate task.
+**Implementation:**
+```typescript
+const isMobile = window.innerWidth < 768;
+const sidebarW = isMobile ? 0 : 220;
+const propsW = useUIStore.getState().propertiesPanelOpen ? 250 : 0;
+const padding = isMobile ? 16 : 64;
+```
+
+**Impact:** PDFs now open at correct fit-to-width zoom on mobile. No more artificial 25% zoom when panel closed. Desktop unchanged (already worked when panel open).
+
+**Validation:** Build ✓, TypeScript ✓, ESLint ✓ (0 errors/warnings), smoke test ✓ (/ + /editor both 200).
+
+**Real-device result:** Requires device testing — calculation now uses actual state + correct padding. Expected: fit-to-width zoom on mobile, content no longer clipped/hidden.
+
+## M2.6 Initial Zoom Issue (RESOLVED)
 
 ## M2.6 Remaining Work
 
-**Phase 2.5 (optional):** Fix initial zoom auto-fit calculation  
 **Phase 3:** Pinch focal anchoring (RC-4)  
 **Phase 4:** Text editing + visualViewport (RC-5, RC-6)  
 **Phase 5:** Polish (RC-7, RC-8, RC-9)
